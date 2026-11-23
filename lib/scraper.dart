@@ -1,14 +1,20 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';import 'package:html/parser.dart' as html;
+import 'package:flutter/foundation.dart';
+import 'package:html/parser.dart' as html;
 
 const _ua =
     'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) '
     'Chrome/120.0 Mobile Safari/537.36';
 
 class VideoItem {
-  VideoItem({required this.id, required this.path, required this.title, this.thumb});
+  VideoItem({
+    required this.id,
+    required this.path,
+    required this.title,
+    this.thumb,
+  });
   final String id;
   final String path; // e.g. /video-xxx/slug/
   final String title;
@@ -28,25 +34,32 @@ String formatSize(double mb) =>
 
 class Scraper extends ChangeNotifier {
   Scraper()
-      : dio = Dio(BaseOptions(
+    : dio = Dio(
+        BaseOptions(
           headers: {'User-Agent': _ua},
           followRedirects: true,
           connectTimeout: const Duration(seconds: 20),
           receiveTimeout: const Duration(seconds: 30),
-        ));
+        ),
+      );
 
   final Dio dio;
   static const host = 'https://www.eporner.com';
 
   Future<String> _get(String url) async {
-    final r = await dio.get<String>(url,
-        options: Options(responseType: ResponseType.plain));
+    final r = await dio.get<String>(
+      url,
+      options: Options(responseType: ResponseType.plain),
+    );
     return r.data ?? '';
   }
 
   /// Walks playlist pages (/, /2/, /3/ ...) until no new videos appear.
-  Future<List<VideoItem>> fetchPlaylist(String url,
-      {void Function(int count)? onProgress, int maxPages = 100}) async {
+  Future<List<VideoItem>> fetchPlaylist(
+    String url, {
+    void Function(int count)? onProgress,
+    int maxPages = 100,
+  }) async {
     final base = Uri.parse(url.trim());
     var basePath = base.path.endsWith('/') ? base.path : '${base.path}/';
     basePath = basePath.replaceFirst(RegExp(r'\d+/$'), '');
@@ -66,10 +79,12 @@ class Scraper extends ChangeNotifier {
         if (page == 1) rethrow;
         break;
       }
-      final found = _parseVideos(body);      final before = seen.length;
+      final found = _parseVideos(body);
+      final before = seen.length;
       for (final v in found) {
         seen.putIfAbsent(v.id, () => v);
       }
+      if (page == 1 && found.isEmpty) throw 'No videos found at this link';
       onProgress?.call(seen.length);
       if (seen.length == before) break;
     }
@@ -93,12 +108,21 @@ class Scraper extends ChangeNotifier {
         node = node.parent;
       }
       final slug = m.group(2) ?? '';
-      out.add(VideoItem(
-        id: m.group(1)!,
-        path: m.group(0)!,
-        title: slug.isEmpty ? m.group(1)! : slug.replaceAll('-', ' '),
-        thumb: (thumb != null && thumb.startsWith('http')) ? thumb : null,
-      ));
+      final real =
+          (a.attributes['title'] ??
+                  a.querySelector('img')?.attributes['alt'] ??
+                  '')
+              .trim();
+      out.add(
+        VideoItem(
+          id: m.group(1)!,
+          path: m.group(0)!,
+          title: real.isNotEmpty
+              ? real
+              : (slug.isEmpty ? m.group(1)! : slug.replaceAll('-', ' ')),
+          thumb: (thumb != null && thumb.startsWith('http')) ? thumb : null,
+        ),
+      );
     }
     return out;
   }
@@ -171,10 +195,25 @@ class Scraper extends ChangeNotifier {
         mb = double.tryParse(s.group(1)!);
         if (mb != null && s.group(2)!.toUpperCase() == 'GB') mb *= 1024;
       }
-      links.add(DownloadLink(
-          int.parse(m.group(2)!), '$host$path', path.contains('-av1'), mb));
+      links.add(
+        DownloadLink(
+          int.parse(m.group(2)!),
+          '$host$path',
+          path.contains('-av1'),
+          mb,
+        ),
+      );
     }
+    if (links.isEmpty) throw 'No download links on page';
     return links;
+  }
+
+  /// Re-allows size loading for videos that failed before.
+  void retryFailed(Iterable<VideoItem> items) {
+    for (final v in items) {
+      failed.remove(v.id);
+    }
+    notifyListeners();
   }
 
   /// Best link with quality <= [maxQuality]; prefers h264 over av1.
@@ -183,7 +222,10 @@ class Scraper extends ChangeNotifier {
 
   /// Links with quality <= [maxQuality], best first (h264 before av1).
   /// Falls back to all links if none qualify.
-  static List<DownloadLink> candidates(List<DownloadLink> links, int maxQuality) {
+  static List<DownloadLink> candidates(
+    List<DownloadLink> links,
+    int maxQuality,
+  ) {
     final ok = links.where((l) => l.quality <= maxQuality).toList();
     final pool = ok.isEmpty ? [...links] : ok;
     pool.sort((a, b) {

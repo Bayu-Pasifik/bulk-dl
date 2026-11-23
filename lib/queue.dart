@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'library.dart';
 import 'scraper.dart';
 
 enum Status { waiting, resolving, downloading, done, failed, canceled }
@@ -34,6 +35,7 @@ class Task extends ChangeNotifier {
 class DownloadQueue extends ChangeNotifier {
   DownloadQueue(this.scraper);
   final Scraper scraper;
+  final Library lib = Library();
   final List<Task> tasks = [];
   int maxQuality = 720; // 1080p+ needs a login on the site
   int concurrency = 2;
@@ -122,6 +124,16 @@ class DownloadQueue extends ChangeNotifier {
       if (cands.isEmpty) throw 'No download link';
       final dir = await outDir();
 
+      // Already in the public library: skip.
+      final known = await lib.find(t.video.id);
+      if (known != null) {
+        t.quality = known.quality;
+        t.file = known.uri;
+        t.progress = 1;
+        end = Status.done;
+        return;
+      }
+
       // Already downloaded at one of the wanted qualities: skip.
       for (final c in cands) {
         final f = File('${dir.path}/${_name(t.video, c.quality)}');
@@ -198,6 +210,13 @@ class DownloadQueue extends ChangeNotifier {
       }
       await File(part).rename(path);
       t.file = path;
+      // Move to public Movies/BulkDL so it shows in the gallery.
+      final uri = await lib.export(path, _name(t.video, link.quality));
+      if (uri != null) {
+        await File(path).delete();
+        await lib.add(t.video.id, uri, link.quality);
+        t.file = uri;
+      }
       t.progress = 1;
       end = Status.done;
     } on _Canceled {

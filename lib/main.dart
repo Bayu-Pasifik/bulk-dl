@@ -46,6 +46,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     queue.outDir().then((d) {
       if (mounted) setState(() => savePath = d.path);
     });
+    queue.lib.load();
     queue.cleanupPartials();
     BgService.requestPermissions();
     queue.addListener(_syncBg);
@@ -488,7 +489,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        savePath!,
+                        'Movies/BulkDL',
                         style: mono.copyWith(fontSize: 11.5),
                         maxLines: 3,
                       ),
@@ -617,6 +618,25 @@ class _TaskTile extends StatelessWidget {
                     color: yellow,
                     padding: const EdgeInsets.all(8),
                     onPressed: () => q.retry(t),
+                  )
+                else if (t.file?.startsWith('content://') ?? false)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      NeoButton(
+                        icon: Icons.play_arrow,
+                        color: green,
+                        padding: const EdgeInsets.all(8),
+                        onPressed: () => q.lib.open(t.file!),
+                      ),
+                      const SizedBox(width: 8),
+                      NeoButton(
+                        icon: Icons.share,
+                        color: blue,
+                        padding: const EdgeInsets.all(8),
+                        onPressed: () => q.lib.share(t.file!),
+                      ),
+                    ],
                   )
                 else
                   const NeoBox(

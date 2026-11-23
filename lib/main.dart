@@ -46,7 +46,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     queue.outDir().then((d) {
       if (mounted) setState(() => savePath = d.path);
     });
-    queue.lib.load();
+    queue.lib.load().then((_) => queue.restore());
     queue.cleanupPartials();
     BgService.requestPermissions();
     queue.addListener(_syncBg);

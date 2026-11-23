@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'library.dart';
 import 'scraper.dart';
@@ -65,12 +67,66 @@ class DownloadQueue extends ChangeNotifier {
     }
   }
 
+  static const _qKey = 'queue_v1';
+
+  Future<void> _persist() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString(
+        _qKey,
+        jsonEncode([
+          for (final t in tasks)
+            {
+              'id': t.video.id,
+              'path': t.video.path,
+              'title': t.video.title,
+              'thumb': t.video.thumb,
+              'status': t.status.name,
+              'quality': t.quality,
+              'file': t.file,
+            },
+        ]),
+      );
+    } catch (_) {}
+  }
+
+  /// Reloads the queue from the last session. Unfinished tasks come back
+  /// as canceled so the user can resume them (partial files are kept).
+  Future<void> restore() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getString(_qKey);
+      if (raw == null) return;
+      for (final m in jsonDecode(raw) as List) {
+        final v = VideoItem(
+          id: m['id'],
+          path: m['path'],
+          title: m['title'],
+          thumb: m['thumb'],
+        );
+        if (tasks.any((t) => t.video.id == v.id)) continue;
+        final t = Task(v)..quality = m['quality'];
+        if (m['status'] == 'done' && m['file'] != null) {
+          if (!await lib.exists(m['file'])) continue;
+          t.file = m['file'];
+          t.status = Status.done;
+          t.progress = 1;
+        } else {
+          t.status = Status.canceled;
+        }
+        tasks.add(t);
+      }
+      notifyListeners();
+    } catch (_) {}
+  }
+
   void add(Iterable<VideoItem> items) {
     for (final v in items) {
       if (tasks.any((t) => t.video.id == v.id)) continue;
       tasks.add(Task(v));
     }
     notifyListeners();
+    _persist();
     _pump();
   }
 
@@ -96,6 +152,7 @@ class DownloadQueue extends ChangeNotifier {
               t.status == Status.failed),
     );
     notifyListeners();
+    _persist();
   }
 
   void _pump() {
@@ -232,6 +289,7 @@ class DownloadQueue extends ChangeNotifier {
     } finally {
       t.busy = false;
       t.update(s: end, e: err);
+      _persist();
     }
   }
 

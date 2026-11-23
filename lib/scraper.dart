@@ -44,7 +44,9 @@ class Scraper extends ChangeNotifier {
       );
 
   final Dio dio;
-  static const host = 'https://www.eporner.com';
+
+  /// Origin of the playlist link; set by [fetchPlaylist].
+  String host = 'https://www.eporner.com';
 
   Future<String> _get(String url) async {
     final r = await dio.get<String>(
@@ -64,11 +66,13 @@ class Scraper extends ChangeNotifier {
     var basePath = base.path.endsWith('/') ? base.path : '${base.path}/';
     basePath = basePath.replaceFirst(RegExp(r'\d+/$'), '');
     if (!basePath.endsWith('/')) basePath += '/';
+    host = '${base.scheme}://${base.authority}';
     final seen = <String, VideoItem>{};
     for (var page = 1; page <= maxPages; page++) {
       final u = Uri(
-        scheme: 'https',
+        scheme: base.scheme.isEmpty ? 'https' : base.scheme,
         host: base.host,
+        port: base.hasPort ? base.port : null,
         path: page == 1 ? basePath : '$basePath$page/',
         query: base.hasQuery ? base.query : null,
       ).toString();

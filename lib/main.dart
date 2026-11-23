@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'bg.dart';
 import 'neo.dart';
 import 'queue.dart';
 import 'scraper.dart';
 
-void main() => runApp(const App());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  BgService.init();
+  runApp(const App());
+}
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -42,6 +47,21 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       if (mounted) setState(() => savePath = d.path);
     });
     queue.cleanupPartials();
+    BgService.requestPermissions();
+    queue.addListener(_syncBg);
+  }
+
+  void _syncBg() {
+    final act = queue.tasks.where((t) => t.busy).toList();
+    final left = queue.tasks.where((t) => t.status == Status.waiting).length;
+    final pct = act.isEmpty
+        ? 0
+        : act.map((t) => t.progress).reduce((a, b) => a + b) / act.length * 100;
+    BgService.sync(
+      active: act.length + left,
+      text:
+          '${act.length} downloading, $left waiting · ${pct.toStringAsFixed(0)}%',
+    );
   }
 
   double? _sizeOf(VideoItem v) {

@@ -53,15 +53,13 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   }
 
   void _syncBg() {
-    final act = queue.tasks.where((t) => t.busy).toList();
-    final left = queue.tasks.where((t) => t.status == Status.waiting).length;
-    final pct = act.isEmpty
-        ? 0
-        : act.map((t) => t.progress).reduce((a, b) => a + b) / act.length * 100;
+    final st = queue.stats();
+    final eta = st.eta == null ? '' : ' · ETA ${formatEta(st.eta!)}';
+    final spd = st.speed > 0 ? ' · ${formatSpeed(st.speed)}' : '';
     BgService.sync(
-      active: act.length + left,
+      active: queue.tasks.where((t) => t.busy).length + st.waiting,
       text:
-          '${act.length} downloading, $left waiting · ${pct.toStringAsFixed(0)}%',
+          '${st.active} downloading, ${st.waiting} waiting · ${(st.fraction * 100).toStringAsFixed(0)}%$spd$eta',
     );
   }
 
@@ -498,6 +496,35 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                 ),
               ),
             ),
+          Builder(
+            builder: (_) {
+              final st = queue.stats();
+              if (st.active + st.waiting == 0) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 18, 20, 0),
+                child: NeoBox(
+                  color: yellow,
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${st.active} ACTIVE · ${st.waiting} WAITING · ${(st.fraction * 100).toStringAsFixed(0)}%',
+                        style: heavy.copyWith(fontSize: 13),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${st.speed > 0 ? formatSpeed(st.speed) : '--'} · ETA ${st.eta == null ? '--:--' : formatEta(st.eta!)}',
+                        style: mono.copyWith(fontSize: 12),
+                      ),
+                      const SizedBox(height: 8),
+                      NeoProgress(value: st.fraction),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 18, 20, 0),
             child: Row(
@@ -571,7 +598,7 @@ class _TaskTile extends StatelessWidget {
         final label = t.status == Status.failed
             ? 'FAILED: ${t.error}'
             : t.status == Status.downloading
-            ? 'DOWNLOADING ${(t.progress * 100).toStringAsFixed(0)}% · ${t.quality}P'
+            ? 'DOWNLOADING ${(t.progress * 100).toStringAsFixed(0)}% · ${t.quality}P${t.speed > 0 ? ' · ${formatSpeed(t.speed)}' : ''}'
             : t.status == Status.done
             ? 'DONE · ${t.quality}P'
             : t.status.name.toUpperCase();

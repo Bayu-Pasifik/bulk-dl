@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -26,12 +27,54 @@ class Task extends ChangeNotifier {
   /// True while a `_run` is in flight (guards against double runs).
   bool busy = false;
 
+  int received = 0;
+  int total = 0;
+  double speed = 0; // bytes/s, smoothed
+  DateTime _t = DateTime.now();
+  int _b = 0;
+
+  void startMeter(int rec, int tot) {
+    received = rec;
+    total = tot;
+    speed = 0;
+    _t = DateTime.now();
+    _b = rec;
+  }
+
+  void sample(int rec) {
+    received = rec;
+    final now = DateTime.now();
+    final dt = now.difference(_t).inMilliseconds;
+    if (dt < 1000) return;
+    final inst = (rec - _b) * 1000 / dt;
+    speed = speed == 0 ? inst : speed * 0.6 + inst * 0.4;
+    _t = now;
+    _b = rec;
+  }
+
   void update({Status? s, double? p, String? e}) {
     if (s != null) status = s;
     if (p != null) progress = p;
     if (e != null) error = e;
     notifyListeners();
   }
+}
+
+String formatSpeed(double bps) => '${(bps / 1048576).toStringAsFixed(1)} MB/S';
+
+String formatEta(int sec) {
+  final h = sec ~/ 3600, m = (sec % 3600) ~/ 60, s = sec % 60;
+  String two(int n) => n.toString().padLeft(2, '0');
+  return h > 0 ? '$h:${two(m)}:${two(s)}' : '${two(m)}:${two(s)}';
+}
+
+class QueueStats {
+  QueueStats(this.active, this.waiting, this.speed, this.fraction, this.eta);
+  final int active;
+  final int waiting;
+  final double speed; // bytes/s
+  final double fraction; // 0..1 over unfinished work
+  final int? eta; // seconds, null when unknown
 }
 
 class DownloadQueue extends ChangeNotifier {
@@ -42,6 +85,26 @@ class DownloadQueue extends ChangeNotifier {
   int maxQuality = 720; // 1080p+ needs a login on the site
   int concurrency = 2;
   int _active = 0;
+
+  QueueStats stats() {
+    var active = 0, waiting = 0;
+    var speed = 0.0, got = 0.0, all = 0.0;
+    for (final t in tasks) {
+      if (t.busy && t.status == Status.downloading) {
+        active++;
+        speed += t.speed;
+        got += t.received;
+        all += t.total;
+      } else if (t.status == Status.waiting || t.status == Status.resolving) {
+        waiting++;
+        final l = scraper.done[t.video.id];
+        final mb = l == null ? null : Scraper.pick(l, maxQuality)?.mb;
+        if (mb != null) all += mb * 1048576;
+      }
+    }
+    final eta = speed > 0 && all > got ? ((all - got) / speed).ceil() : null;
+    return QueueStats(active, waiting, speed, all > 0 ? got / all : 0, eta);
+  }
 
   Future<Directory> outDir() async {
     final base =
@@ -157,6 +220,21 @@ class DownloadQueue extends ChangeNotifier {
     _persist();
   }
 
+  Timer? _tick;
+
+  /// 1 Hz refresh of aggregate stats/notification while anything runs.
+  void _syncTicker() {
+    if (_active > 0) {
+      _tick ??= Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => notifyListeners(),
+      );
+    } else {
+      _tick?.cancel();
+      _tick = null;
+    }
+  }
+
   void _pump() {
     while (_active < concurrency) {
       final next = tasks.where((t) => t.status == Status.waiting).firstOrNull;
@@ -167,8 +245,10 @@ class DownloadQueue extends ChangeNotifier {
       _run(next).whenComplete(() {
         _active--;
         _pump();
+        _syncTicker();
       });
     }
+    _syncTicker();
   }
 
   Future<void> _run(Task t) async {
@@ -252,6 +332,7 @@ class DownloadQueue extends ChangeNotifier {
       final len = body.contentLength;
       final total = len > 0 ? len + offset : 0;
       var received = offset;
+      t.startMeter(received, total);
       t.update(s: Status.downloading, p: total > 0 ? received / total : 0);
       final sink = File(part)
           .openWrite(mode: offset > 0 ? FileMode.append : FileMode.write);
@@ -259,6 +340,7 @@ class DownloadQueue extends ChangeNotifier {
         await for (final chunk in body.stream) {
           sink.add(chunk);
           received += chunk.length;
+          t.sample(received);
           if (total > 0) t.update(p: received / total);
         }
       } finally {
@@ -290,6 +372,7 @@ class DownloadQueue extends ChangeNotifier {
       err = '$e';
     } finally {
       t.busy = false;
+      t.speed = 0;
       t.update(s: end, e: err);
       _persist();
     }

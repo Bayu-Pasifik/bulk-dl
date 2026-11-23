@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -26,6 +27,10 @@ class Task extends ChangeNotifier {
 
   /// True while a `_run` is in flight (guards against double runs).
   bool busy = false;
+
+  int attempts = 0; // auto-retries used
+  bool transient = false; // last failure worth retrying
+  bool pausedByNet = false; // paused because Wi-Fi-only is on
 
   int received = 0;
   int total = 0;
@@ -85,6 +90,46 @@ class DownloadQueue extends ChangeNotifier {
   int maxQuality = 720; // 1080p+ needs a login on the site
   int concurrency = 2;
   int _active = 0;
+
+  // --- network policy -------------------------------------------------
+  static const maxAttempts = 3;
+  bool _wifiOnly = false;
+  bool _onWifi = true;
+  StreamSubscription<List<ConnectivityResult>>? _netSub;
+
+  bool get wifiOnly => _wifiOnly;
+  bool get blocked => _wifiOnly && !_onWifi;
+
+  set wifiOnly(bool v) {
+    _wifiOnly = v;
+    _enforceNet();
+  }
+
+  bool _isWifi(List<ConnectivityResult> r) =>
+      r.contains(ConnectivityResult.wifi) ||
+      r.contains(ConnectivityResult.ethernet);
+
+  Future<void> initNet() async {
+    _onWifi = _isWifi(await Connectivity().checkConnectivity());
+    _netSub = Connectivity().onConnectivityChanged.listen((r) {
+      _onWifi = _isWifi(r);
+      _enforceNet();
+    });
+    _enforceNet();
+  }
+
+  /// Pause running downloads when blocked, resume waiting ones otherwise.
+  void _enforceNet() {
+    if (blocked) {
+      for (final t in tasks.where((t) => t.busy)) {
+        t.pausedByNet = true;
+        t.token?.cancel('nowifi');
+      }
+    } else {
+      _pump();
+    }
+    notifyListeners();
+  }
 
   QueueStats stats() {
     var active = 0, waiting = 0;
@@ -204,6 +249,7 @@ class DownloadQueue extends ChangeNotifier {
     // Old run still unwinding: ignore; it ends in a retryable state soon.
     if (t.busy) return;
     if (t.status != Status.failed && t.status != Status.canceled) return;
+    t.attempts = 0;
     t.update(s: Status.waiting, p: 0);
     _pump();
   }
@@ -218,6 +264,13 @@ class DownloadQueue extends ChangeNotifier {
     );
     notifyListeners();
     _persist();
+  }
+
+  @override
+  void dispose() {
+    _netSub?.cancel();
+    _tick?.cancel();
+    super.dispose();
   }
 
   Timer? _tick;
@@ -236,6 +289,7 @@ class DownloadQueue extends ChangeNotifier {
   }
 
   void _pump() {
+    if (blocked) return;
     while (_active < concurrency) {
       final next = tasks.where((t) => t.status == Status.waiting).firstOrNull;
       if (next == null) return;
@@ -347,6 +401,7 @@ class DownloadQueue extends ChangeNotifier {
         await sink.close();
       }
       if (total > 0 && received != total) {
+        t.transient = true;
         throw 'Incomplete download ($received/$total bytes)';
       }
       await File(part).rename(path);
@@ -367,14 +422,55 @@ class DownloadQueue extends ChangeNotifier {
         end = Status.canceled;
       } else {
         err = _dioMessage(e);
+        t.transient = _isTransient(e);
       }
-    } catch (e) {
-      err = '$e';
+    } on Object catch (e) {
+      if (e is HttpException ||
+          e is SocketException ||
+          e is TimeoutException ||
+          e is HandshakeException) {
+        err = 'Connection lost';
+        t.transient = true;
+      } else {
+        err = '$e';
+      }
     } finally {
       t.busy = false;
       t.speed = 0;
+      if (end == Status.canceled && t.pausedByNet) {
+        end = Status.waiting; // resumes (Range) once Wi-Fi is back
+      }
+      t.pausedByNet = false;
+      if (end == Status.done) t.attempts = 0;
+      if (end == Status.failed && t.transient && t.attempts < maxAttempts) {
+        t.attempts++;
+        final wait = [2, 6, 15][t.attempts - 1];
+        err = '$err — retry ${t.attempts}/$maxAttempts in ${wait}s';
+        Future.delayed(Duration(seconds: wait), () {
+          if (t.status == Status.failed && !t.busy) {
+            t.update(s: Status.waiting);
+            _pump();
+          }
+        });
+      }
+      t.transient = false;
       t.update(s: end, e: err);
+      notifyListeners();
       _persist();
+    }
+  }
+
+  bool _isTransient(DioException e) {
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.connectionError:
+        return true;
+      case DioExceptionType.badResponse:
+        return (e.response?.statusCode ?? 0) >= 500;
+      default:
+        return false;
     }
   }
 

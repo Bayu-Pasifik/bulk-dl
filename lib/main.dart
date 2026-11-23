@@ -54,6 +54,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     queue.outDir().then((d) {
       if (mounted) setState(() => savePath = d.path);
     });
+    queue.initNet();
     queue.lib.load().then((_) => queue.restore());
     queue.cleanupPartials();
     BgService.requestPermissions();
@@ -575,6 +576,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
             builder: (_) {
               final st = queue.stats();
               if (st.active + st.waiting == 0) return const SizedBox.shrink();
+              final paused = queue.blocked;
               return Padding(
                 padding: const EdgeInsets.fromLTRB(16, 18, 20, 0),
                 child: NeoBox(
@@ -592,6 +594,13 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                         '${st.speed > 0 ? formatSpeed(st.speed) : '--'} · ETA ${st.eta == null ? '--:--' : formatEta(st.eta!)}',
                         style: mono.copyWith(fontSize: 12),
                       ),
+                      if (paused) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'PAUSED: WAITING FOR WI-FI',
+                          style: heavy.copyWith(fontSize: 12),
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       NeoProgress(value: st.fraction),
                     ],
@@ -599,6 +608,19 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                 ),
               );
             },
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 20, 0),
+            child: GestureDetector(
+              onTap: () => queue.wifiOnly = !queue.wifiOnly,
+              child: Row(
+                children: [
+                  NeoCheck(queue.wifiOnly),
+                  const SizedBox(width: 12),
+                  Text('WI-FI ONLY', style: heavy.copyWith(fontSize: 14)),
+                ],
+              ),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 18, 20, 0),

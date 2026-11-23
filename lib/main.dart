@@ -54,7 +54,12 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     queue.outDir().then((d) {
       if (mounted) setState(() => savePath = d.path);
     });
-    queue.initNet();
+    queue.loadSettings().then((_) {
+      if (mounted) {
+        setState(() => urlCtl.text = queue.lastUrl);
+      }
+      queue.initNet();
+    });
     queue.lib.load().then((_) => queue.restore());
     queue.cleanupPartials();
     BgService.requestPermissions();
@@ -118,6 +123,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   Future<void> _fetch() async {
     final url = urlCtl.text.trim();
     if (!url.startsWith('http')) return;
+    queue.rememberUrl(url);
     setState(() {
       loading = true;
       status = 'LOADING...';

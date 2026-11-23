@@ -87,8 +87,50 @@ class DownloadQueue extends ChangeNotifier {
   final Scraper scraper;
   final Library lib = Library();
   final List<Task> tasks = [];
-  int maxQuality = 720; // 1080p+ needs a login on the site
-  int concurrency = 2;
+  int _maxQuality = 720; // 1080p+ needs a login on the site
+  int _concurrency = 2;
+
+  int get maxQuality => _maxQuality;
+  set maxQuality(int v) {
+    _maxQuality = v;
+    _saveSettings();
+  }
+
+  int get concurrency => _concurrency;
+  set concurrency(int v) {
+    _concurrency = v;
+    _saveSettings();
+    _pump();
+  }
+
+  String lastUrl = '';
+
+  Future<void> loadSettings() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      _maxQuality = p.getInt('s_quality') ?? _maxQuality;
+      _concurrency = p.getInt('s_parallel') ?? _concurrency;
+      _wifiOnly = p.getBool('s_wifi') ?? _wifiOnly;
+      lastUrl = p.getString('s_url') ?? '';
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> _saveSettings() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setInt('s_quality', _maxQuality);
+      await p.setInt('s_parallel', _concurrency);
+      await p.setBool('s_wifi', _wifiOnly);
+      await p.setString('s_url', lastUrl);
+    } catch (_) {}
+  }
+
+  void rememberUrl(String url) {
+    lastUrl = url;
+    _saveSettings();
+  }
+
   int _active = 0;
 
   // --- network policy -------------------------------------------------
@@ -102,6 +144,7 @@ class DownloadQueue extends ChangeNotifier {
 
   set wifiOnly(bool v) {
     _wifiOnly = v;
+    _saveSettings();
     _enforceNet();
   }
 

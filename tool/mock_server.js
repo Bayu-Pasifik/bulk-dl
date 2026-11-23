@@ -23,6 +23,7 @@ http.createServer((req, res) => {
 <a href="/dload/${m[1]}/360/${m[1]}-360p.mp4">Download MP4 (360p, 12 MB)</a></html>`);
   }
   if (u.startsWith('/dload/')) {
+    console.log(req.method, u, 'range=' + (req.headers.range || '-'));
     let start = 0;
     const r = req.headers.range && req.headers.range.match(/bytes=(\d+)-/);
     if (r) start = parseInt(r[1]);

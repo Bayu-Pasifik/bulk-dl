@@ -48,11 +48,14 @@ class DownloadQueue extends ChangeNotifier {
     return d;
   }
 
-  /// Removes `.part` files left by a killed app. Call once at startup.
+  bool _stale(File f) =>
+      DateTime.now().difference(f.lastModifiedSync()).inDays >= 7;
+
+  /// Removes `.part` files older than 7 days (fresh ones are resumable).
   Future<void> cleanupPartials() async {
     final d = await outDir();
     await for (final f in d.list()) {
-      if (f is File && f.path.endsWith('.part')) {
+      if (f is File && f.path.endsWith('.part') && _stale(f)) {
         try {
           await f.delete();
         } catch (_) {}
@@ -112,7 +115,6 @@ class DownloadQueue extends ChangeNotifier {
     t.update(s: Status.resolving);
     var end = Status.failed;
     String? err;
-    String? part;
     try {
       final links = await scraper.links(t.video);
       if (token.isCancelled) throw _Canceled();
@@ -133,14 +135,32 @@ class DownloadQueue extends ChangeNotifier {
       }
 
       // High qualities may redirect to a login page: skip to the next one.
+      // A leftover .part file is resumed with an HTTP Range request.
       ResponseBody? body;
       DownloadLink? link;
+      var offset = 0;
       for (final c in cands) {
-        final r = await scraper.dio.get<ResponseBody>(
-          c.url,
-          cancelToken: token,
-          options: Options(responseType: ResponseType.stream),
-        );
+        final pf = File('${dir.path}/${_name(t.video, c.quality)}.part');
+        var have = await pf.exists() ? await pf.length() : 0;
+        Response<ResponseBody> r;
+        while (true) {
+          r = await scraper.dio.get<ResponseBody>(
+            c.url,
+            cancelToken: token,
+            options: Options(
+              responseType: ResponseType.stream,
+              headers: have > 0 ? {'Range': 'bytes=$have-'} : null,
+              validateStatus: (s) => s != null && (s < 300 || s == 416),
+            ),
+          );
+          if (r.statusCode == 416) {
+            // Stale/oversized partial: start over.
+            await pf.delete();
+            have = 0;
+            continue;
+          }
+          break;
+        }
         final type = r.headers.value('content-type') ?? '';
         if (type.contains('text/html')) {
           await r.data!.stream.listen((_) {}).cancel();
@@ -148,6 +168,7 @@ class DownloadQueue extends ChangeNotifier {
         }
         body = r.data;
         link = c;
+        offset = r.statusCode == 206 ? have : 0; // 200 = server ignored Range
         break;
       }
       if (body == null || link == null) {
@@ -156,11 +177,13 @@ class DownloadQueue extends ChangeNotifier {
 
       t.quality = link.quality;
       final path = '${dir.path}/${_name(t.video, link.quality)}';
-      part = '$path.part';
-      final total = body.contentLength;
-      var received = 0;
-      t.update(s: Status.downloading, p: 0);
-      final sink = File(part).openWrite();
+      final part = '$path.part';
+      final len = body.contentLength;
+      final total = len > 0 ? len + offset : 0;
+      var received = offset;
+      t.update(s: Status.downloading, p: total > 0 ? received / total : 0);
+      final sink = File(part)
+          .openWrite(mode: offset > 0 ? FileMode.append : FileMode.write);
       try {
         await for (final chunk in body.stream) {
           sink.add(chunk);
@@ -174,7 +197,6 @@ class DownloadQueue extends ChangeNotifier {
         throw 'Incomplete download ($received/$total bytes)';
       }
       await File(part).rename(path);
-      part = null;
       t.file = path;
       t.progress = 1;
       end = Status.done;
@@ -189,12 +211,6 @@ class DownloadQueue extends ChangeNotifier {
     } catch (e) {
       err = '$e';
     } finally {
-      if (part != null) {
-        try {
-          final f = File(part);
-          if (await f.exists()) await f.delete();
-        } catch (_) {}
-      }
       t.busy = false;
       t.update(s: end, e: err);
     }

@@ -14,11 +14,26 @@ import java.io.File
 
 class MainActivity : FlutterActivity() {
     private val main = Handler(Looper.getMainLooper())
+    private var channel: MethodChannel? = null
+    private var pendingShare: String? = null
+
+    private fun sharedText(i: Intent?): String? =
+        if (i?.action == Intent.ACTION_SEND) i.getStringExtra(Intent.EXTRA_TEXT) else null
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        pendingShare = sharedText(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        sharedText(intent)?.let { channel?.invokeMethod("shared", it) }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bulk_dl/files")
-            .setMethodCallHandler { call, result ->
+        channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bulk_dl/files")
+        channel!!.setMethodCallHandler { call, result ->
                 when (call.method) {
                     "export" -> {
                         val path = call.argument<String>("path")!!
@@ -31,6 +46,10 @@ class MainActivity : FlutterActivity() {
                     "exists" -> result.success(exists(call.argument<String>("uri")!!))
                     "open" -> result.success(launch(call.argument<String>("uri")!!, false))
                     "share" -> result.success(launch(call.argument<String>("uri")!!, true))
+                    "initialShare" -> {
+                        result.success(pendingShare)
+                        pendingShare = null
+                    }
                     "delete" -> result.success(delete(call.argument<String>("uri")!!))
                     else -> result.notImplemented()
                 }

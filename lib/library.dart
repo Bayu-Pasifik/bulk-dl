@@ -74,6 +74,22 @@ class Library {
     }
   }
 
+  /// Text shared into the app that launched it (or null).
+  Future<String?> initialShare() async {
+    try {
+      return await _ch.invokeMethod<String>('initialShare');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Called when text is shared while the app is already running.
+  void onShared(void Function(String text) cb) {
+    _ch.setMethodCallHandler((call) async {
+      if (call.method == 'shared') cb(call.arguments as String);
+    });
+  }
+
   Future<bool> open(String uri) async =>
       await _ch.invokeMethod<bool>('open', {'uri': uri}) ?? false;
 

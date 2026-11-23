@@ -58,6 +58,19 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     queue.cleanupPartials();
     BgService.requestPermissions();
     queue.addListener(_syncBg);
+    queue.lib.onShared(_onShared);
+    queue.lib.initialShare().then((t) {
+      if (t != null) _onShared(t);
+    });
+  }
+
+  /// Text shared from another app: take the first link and fetch it.
+  void _onShared(String text) {
+    final m = RegExp(r'https?://\S+').firstMatch(text);
+    if (m == null || !mounted) return;
+    urlCtl.text = m.group(0)!;
+    tabs.animateTo(0);
+    _fetch();
   }
 
   void _syncBg() {

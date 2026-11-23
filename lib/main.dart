@@ -35,6 +35,14 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   late final tabs = TabController(length: 2, vsync: this);
   final urlCtl = TextEditingController();
   List<VideoItem> videos = [];
+  final searchCtl = TextEditingController();
+  String filter = '';
+
+  List<VideoItem> get _visible => filter.isEmpty
+      ? videos
+      : videos.where((v) => v.title.toLowerCase().contains(filter)).toList();
+
+  bool _have(VideoItem v) => queue.lib.items.containsKey(v.id);
   final selected = <String>{};
   bool loading = false;
   String status = 'PASTE A LINK';
@@ -100,6 +108,8 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       loading = true;
       status = 'LOADING...';
       videos = [];
+      searchCtl.clear();
+      filter = '';
       selected.clear();
     });
     try {
@@ -109,7 +119,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       );
       setState(() {
         videos = v;
-        selected.addAll(v.map((e) => e.id));
+        selected.addAll(v.where((e) => !_have(e)).map((e) => e.id));
         status = '${v.length} VIDEOS';
       });
     } catch (e) {
@@ -322,6 +332,47 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
         if (videos.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 20, 0),
+            child: NeoBox(
+              padding: const EdgeInsets.only(left: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.search, color: ink),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: searchCtl,
+                      maxLines: 1,
+                      style: mono.copyWith(fontSize: 14),
+                      onChanged: (t) =>
+                          setState(() => filter = t.trim().toLowerCase()),
+                      decoration: InputDecoration(
+                        hintText: 'FILTER TITLE',
+                        hintStyle: mono.copyWith(
+                          color: const Color(0xFF888888),
+                        ),
+                        border: InputBorder.none,
+                        isCollapsed: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (filter.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.close, color: ink),
+                      onPressed: () => setState(() {
+                        searchCtl.clear();
+                        filter = '';
+                      }),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        if (videos.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 20, 0),
             child: Row(
               children: [
                 NeoButton(
@@ -330,8 +381,9 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                     horizontal: 14,
                     vertical: 8,
                   ),
-                  onPressed: () =>
-                      setState(() => selected.addAll(videos.map((e) => e.id))),
+                  onPressed: () => setState(
+                    () => selected.addAll(_visible.map((e) => e.id)),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 NeoButton(
@@ -341,7 +393,9 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                     horizontal: 14,
                     vertical: 8,
                   ),
-                  onPressed: () => setState(selected.clear),
+                  onPressed: () => setState(
+                    () => selected.removeAll(_visible.map((e) => e.id)),
+                  ),
                 ),
                 const Spacer(),
                 NeoButton(
@@ -373,9 +427,9 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.fromLTRB(16, 18, 20, 12),
-            itemCount: videos.length,
+            itemCount: _visible.length,
             itemBuilder: (_, i) {
-              final v = videos[i];
+              final v = _visible[i];
               scraper.ensure(v);
               final on = selected.contains(v.id);
               return Padding(
@@ -404,9 +458,17 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                               const SizedBox(height: 6),
                               ListenableBuilder(
                                 listenable: scraper,
-                                builder: (_, _) => NeoTag(
-                                  _sizeLabel(v),
-                                  color: on ? Colors.white : paper,
+                                builder: (_, _) => Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    NeoTag(
+                                      _sizeLabel(v),
+                                      color: on ? Colors.white : paper,
+                                    ),
+                                    if (_have(v))
+                                      const NeoTag('DOWNLOADED', color: green),
+                                  ],
                                 ),
                               ),
                             ],

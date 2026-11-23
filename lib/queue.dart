@@ -15,6 +15,7 @@ class Task extends ChangeNotifier {
   double progress = 0;
   String? error;
   String? file;
+  int? quality;
   CancelToken? token;
 
   void update({Status? s, double? p, String? e}) {
@@ -29,7 +30,7 @@ class DownloadQueue extends ChangeNotifier {
   DownloadQueue(this.scraper);
   final Scraper scraper;
   final List<Task> tasks = [];
-  int maxQuality = 1080;
+  int maxQuality = 720; // 1080p+ needs a login on the site
   int concurrency = 2;
   int _active = 0;
 
@@ -85,22 +86,51 @@ class DownloadQueue extends ChangeNotifier {
     t.update(s: Status.resolving);
     try {
       final links = await scraper.links(t.video);
-      final link = Scraper.pick(links, maxQuality);
-      if (link == null) throw 'No download link';
+      final cands = Scraper.candidates(links, maxQuality);
+      if (cands.isEmpty) throw 'No download link';
       final dir = await outDir();
+      t.token = CancelToken();
+
+      // High qualities may redirect to a login page: skip to the next one.
+      ResponseBody? body;
+      DownloadLink? link;
+      for (final c in cands) {
+        final r = await scraper.dio.get<ResponseBody>(c.url,
+            cancelToken: t.token,
+            options: Options(responseType: ResponseType.stream));
+        final type = r.headers.value('content-type') ?? '';
+        if (type.contains('text/html')) {
+          await r.data!.stream.listen((_) {}).cancel();
+          continue;
+        }
+        body = r.data;
+        link = c;
+        break;
+      }
+      if (body == null || link == null) {
+        throw 'Login required (no free quality available)';
+      }
+
+      t.quality = link.quality;
       final name = _safe('${t.video.title}_${link.quality}p_${t.video.id}.mp4');
       final path = '${dir.path}/$name';
-      t.token = CancelToken();
+      final total = body.contentLength;
+      var received = 0;
       t.update(s: Status.downloading, p: 0);
-      await scraper.dio.download(
-        link.url,
-        '$path.part',
-        cancelToken: t.token,
-        deleteOnError: true,
-        onReceiveProgress: (r, total) {
-          if (total > 0) t.update(p: r / total);
-        },
-      );
+      final sink = File('$path.part').openWrite();
+      try {
+        await for (final chunk in body.stream) {
+          sink.add(chunk);
+          received += chunk.length;
+          if (total > 0) t.update(p: received / total);
+        }
+        await sink.close();
+      } catch (_) {
+        await sink.close();
+        final part = File('$path.part');
+        if (await part.exists()) await part.delete();
+        rethrow;
+      }
       await File('$path.part').rename(path);
       t.file = path;
       t.update(s: Status.done, p: 1);

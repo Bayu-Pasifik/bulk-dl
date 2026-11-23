@@ -178,15 +178,19 @@ class Scraper extends ChangeNotifier {
   }
 
   /// Best link with quality <= [maxQuality]; prefers h264 over av1.
-  static DownloadLink? pick(List<DownloadLink> links, int maxQuality) {
-    if (links.isEmpty) return null;
+  static DownloadLink? pick(List<DownloadLink> links, int maxQuality) =>
+      candidates(links, maxQuality).firstOrNull;
+
+  /// Links with quality <= [maxQuality], best first (h264 before av1).
+  /// Falls back to all links if none qualify.
+  static List<DownloadLink> candidates(List<DownloadLink> links, int maxQuality) {
     final ok = links.where((l) => l.quality <= maxQuality).toList();
-    final pool = ok.isEmpty ? links : ok;
+    final pool = ok.isEmpty ? [...links] : ok;
     pool.sort((a, b) {
       final q = b.quality.compareTo(a.quality);
       if (q != 0) return q;
       return (a.av1 ? 1 : 0).compareTo(b.av1 ? 1 : 0);
     });
-    return pool.first;
+    return pool;
   }
 }

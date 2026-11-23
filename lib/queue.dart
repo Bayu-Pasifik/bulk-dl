@@ -79,6 +79,7 @@ class DownloadQueue extends ChangeNotifier {
             {
               'id': t.video.id,
               'path': t.video.path,
+              'origin': t.video.origin,
               'title': t.video.title,
               'thumb': t.video.thumb,
               'status': t.status.name,
@@ -101,6 +102,7 @@ class DownloadQueue extends ChangeNotifier {
         final v = VideoItem(
           id: m['id'],
           path: m['path'],
+          origin: m['origin'] ?? 'https://www.eporner.com',
           title: m['title'],
           thumb: m['thumb'],
         );

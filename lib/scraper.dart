@@ -12,11 +12,13 @@ class VideoItem {
   VideoItem({
     required this.id,
     required this.path,
+    required this.origin,
     required this.title,
     this.thumb,
   });
   final String id;
   final String path; // e.g. /video-xxx/slug/
+  final String origin; // e.g. https://site.com (survives restarts)
   final String title;
   final String? thumb;
 }
@@ -121,6 +123,7 @@ class Scraper extends ChangeNotifier {
         VideoItem(
           id: m.group(1)!,
           path: m.group(0)!,
+          origin: host,
           title: real.isNotEmpty
               ? real
               : (slug.isEmpty ? m.group(1)! : slug.replaceAll('-', ' ')),
@@ -187,7 +190,7 @@ class Scraper extends ChangeNotifier {
   }
 
   Future<List<DownloadLink>> fetchLinks(VideoItem v) async {
-    final body = await _get('$host${v.path}');
+    final body = await _get('${v.origin}${v.path}');
     final re = RegExp(r'href="(/dload/[^"]+?/(\d+)/[^"]+?\.mp4)"[^>]*>([^<]*)');
     final sizeRe = RegExp(r'([\d.]+)\s*(MB|GB)', caseSensitive: false);
     final links = <DownloadLink>[];
@@ -202,7 +205,7 @@ class Scraper extends ChangeNotifier {
       links.add(
         DownloadLink(
           int.parse(m.group(2)!),
-          '$host$path',
+          '${v.origin}$path',
           path.contains('-av1'),
           mb,
         ),

@@ -1,4 +1,7 @@
-import 'package:dio/dio.dart';import 'package:html/parser.dart' as html;
+import 'dart:async';
+
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';import 'package:html/parser.dart' as html;
 
 const _ua =
     'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -13,13 +16,17 @@ class VideoItem {
 }
 
 class DownloadLink {
-  DownloadLink(this.quality, this.url, this.av1);
+  DownloadLink(this.quality, this.url, this.av1, [this.mb]);
   final int quality;
   final String url;
   final bool av1;
+  final double? mb;
 }
 
-class Scraper {
+String formatSize(double mb) =>
+    mb >= 1024 ? '${(mb / 1024).toStringAsFixed(2)} GB' : '${mb.round()} MB';
+
+class Scraper extends ChangeNotifier {
   Scraper()
       : dio = Dio(BaseOptions(
           headers: {'User-Agent': _ua},
@@ -96,14 +103,76 @@ class Scraper {
     return out;
   }
 
+  // Link cache + throttle: size info lives on each video page.
+  final Map<String, List<DownloadLink>> done = {};
+  final Set<String> failed = {};
+  final Map<String, Future<List<DownloadLink>>> _pending = {};
+  static const _maxParallel = 3;
+  int _running = 0;
+  final _waiters = <Completer<void>>[];
+
+  Future<void> _acquire() async {
+    if (_running < _maxParallel) {
+      _running++;
+      return;
+    }
+    final c = Completer<void>();
+    _waiters.add(c);
+    await c.future;
+  }
+
+  void _release() {
+    if (_waiters.isNotEmpty) {
+      _waiters.removeAt(0).complete();
+    } else {
+      _running--;
+    }
+  }
+
+  /// Fire-and-forget: loads links (and sizes) so the UI can show them.
+  void ensure(VideoItem v) {
+    if (done.containsKey(v.id) || failed.contains(v.id)) return;
+    links(v).ignore();
+  }
+
+  Future<List<DownloadLink>> links(VideoItem v) {
+    final d = done[v.id];
+    if (d != null) return Future.value(d);
+    return _pending[v.id] ??= _load(v);
+  }
+
+  Future<List<DownloadLink>> _load(VideoItem v) async {
+    await _acquire();
+    try {
+      final l = await fetchLinks(v);
+      done[v.id] = l;
+      failed.remove(v.id);
+      return l;
+    } catch (_) {
+      failed.add(v.id);
+      rethrow;
+    } finally {
+      _release();
+      _pending.remove(v.id);
+      notifyListeners();
+    }
+  }
+
   Future<List<DownloadLink>> fetchLinks(VideoItem v) async {
     final body = await _get('$host${v.path}');
-    final re = RegExp(r'href="(/dload/[^"]+?/(\d+)/[^"]+?\.mp4)"');
+    final re = RegExp(r'href="(/dload/[^"]+?/(\d+)/[^"]+?\.mp4)"[^>]*>([^<]*)');
+    final sizeRe = RegExp(r'([\d.]+)\s*(MB|GB)', caseSensitive: false);
     final links = <DownloadLink>[];
     for (final m in re.allMatches(body)) {
       final path = m.group(1)!;
+      final s = sizeRe.firstMatch(m.group(3) ?? '');
+      double? mb;
+      if (s != null) {
+        mb = double.tryParse(s.group(1)!);
+        if (mb != null && s.group(2)!.toUpperCase() == 'GB') mb *= 1024;
+      }
       links.add(DownloadLink(
-          int.parse(m.group(2)!), '$host$path', path.contains('-av1')));
+          int.parse(m.group(2)!), '$host$path', path.contains('-av1'), mb));
     }
     return links;
   }

@@ -42,6 +42,32 @@ class _HomeState extends State<Home> {
     queue.outDir().then((d) => setState(() => savePath = d.path));
   }
 
+  double? _sizeOf(VideoItem v) {
+    final l = scraper.done[v.id];
+    if (l == null) return null;
+    return Scraper.pick(l, queue.maxQuality)?.mb;
+  }
+
+  String _sizeLabel(VideoItem v) {
+    final l = scraper.done[v.id];
+    if (l == null) return scraper.failed.contains(v.id) ? 'size unknown' : '...';
+    final p = Scraper.pick(l, queue.maxQuality);
+    if (p == null) return 'no download link';
+    return p.mb == null ? '${p.quality}p' : '${p.quality}p · ${formatSize(p.mb!)}';
+  }
+
+  String _totalLabel() {
+    var total = 0.0;
+    var unknown = 0;
+    for (final v in videos.where((v) => selected.contains(v.id))) {
+      final s = _sizeOf(v);
+      s == null ? unknown++ : total += s;
+    }
+    final size = total > 0 ? ' · ${formatSize(total)}' : '';
+    final unk = unknown > 0 ? ' (+$unknown unknown)' : '';
+    return 'Download ${selected.length}$size$unk';
+  }
+
   Future<void> _fetch() async {
     final url = urlCtl.text.trim();
     if (!url.startsWith('http')) return;
@@ -129,6 +155,15 @@ class _HomeState extends State<Home> {
           TextButton(
               onPressed: () => setState(selected.clear),
               child: const Text('None')),
+          const Spacer(),
+          TextButton.icon(
+              icon: const Icon(Icons.calculate_outlined),
+              onPressed: () {
+                for (final v in videos.where((v) => selected.contains(v.id))) {
+                  scraper.ensure(v);
+                }
+              },
+              label: const Text('Calc size')),
         ]),
       if (loading) const LinearProgressIndicator(),
       Expanded(
@@ -136,11 +171,16 @@ class _HomeState extends State<Home> {
           itemCount: videos.length,
           itemBuilder: (_, i) {
             final v = videos[i];
+            scraper.ensure(v);
             return CheckboxListTile(
               value: selected.contains(v.id),
               onChanged: (c) =>
                   setState(() => c! ? selected.add(v.id) : selected.remove(v.id)),
               title: Text(v.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+              subtitle: ListenableBuilder(
+                listenable: scraper,
+                builder: (_, _) => Text(_sizeLabel(v)),
+              ),
               secondary: v.thumb == null
                   ? const SizedBox(width: 80)
                   : Image.network(v.thumb!,
@@ -159,7 +199,10 @@ class _HomeState extends State<Home> {
               width: double.infinity,
               child: FilledButton.icon(
                 icon: const Icon(Icons.download),
-                label: Text('Download ${selected.length}'),
+                label: ListenableBuilder(
+                  listenable: scraper,
+                  builder: (_, _) => Text(_totalLabel()),
+                ),
                 onPressed: selected.isEmpty
                     ? null
                     : () {

@@ -84,7 +84,7 @@ class DownloadQueue extends ChangeNotifier {
   Future<void> _run(Task t) async {
     t.update(s: Status.resolving);
     try {
-      final links = await scraper.fetchLinks(t.video);
+      final links = await scraper.links(t.video);
       final link = Scraper.pick(links, maxQuality);
       if (link == null) throw 'No download link';
       final dir = await outDir();

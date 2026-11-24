@@ -22,6 +22,7 @@ class Registry {
             DirectFileExtractor(),
             XvideosFamilyExtractor(),
             MediaDefExtractor(),
+            KvsExtractor(),
             EpornerExtractor(),
             GenericHtmlExtractor(),
           ];

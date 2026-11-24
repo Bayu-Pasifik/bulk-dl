@@ -75,6 +75,7 @@ abstract class SiteExtractor implements Extractor {
           a.parent?.querySelector('img') ??
           a.parent?.parent?.querySelector('img');
       final rawThumb =
+          img?.attributes['data-original'] ??
           img?.attributes['data-src'] ??
           img?.attributes['data-mediumthumb'] ??
           img?.attributes['src'];
@@ -432,6 +433,90 @@ class MediaDefExtractor extends SiteExtractor {
 
     for (final e in defs) {
       if (e is Map) await addEntry(e);
+    }
+    if (links.isEmpty) throw 'No download links on page';
+    return withSizes(links, http);
+  }
+}
+
+/// KVS (Kernel Video Sharing) sites: the page defines a `flashvars` object
+/// with `video_url`, `video_alt_url`, `video_alt_url2`... each paired with a
+/// `<name>_text` quality label. Links are plain mp4 behind a 302.
+class KvsExtractor extends SiteExtractor {
+  @override
+  String get id => 'kvs';
+
+  @override
+  List<String> get hosts => const ['thisvid.com', 'porntrex.com'];
+
+  @override
+  String? videoId(Uri u) {
+    final segs = u.pathSegments.where((s) => s.isNotEmpty).toList();
+    if (u.host.endsWith('porntrex.com')) {
+      final m = RegExp(r'^/video/(\d+)(?:/|$)').firstMatch(u.path);
+      return m?.group(1);
+    }
+    // thisvid: /videos/<slug>/
+    if (segs.length == 2 && segs[0] == 'videos') return segs[1];
+    return null;
+  }
+
+  @override
+  Uri? _nextPage(Document doc, Uri page) {
+    final n = doc.querySelector(
+      'li.pagination-next a, li.next a, a.next, a[rel="next"], link[rel="next"]',
+    );
+    final href = n?.attributes['href'];
+    if (href != null && href.isNotEmpty && href != '#') {
+      return page.resolve(href);
+    }
+    // Fallback: /list/ -> /list/2/ -> /list/3/ (the loop stops on no new items).
+    final m = RegExp(r'^(.*?)/(\d+)/?$').firstMatch(page.path);
+    final path = m == null
+        ? '${page.path.endsWith('/') ? page.path : '${page.path}/'}2/'
+        : '${m.group(1)}/${int.parse(m.group(2)!) + 1}/';
+    return page.replace(path: path);
+  }
+
+  static int _label(String? text, String url) {
+    final t = text ?? '';
+    final m =
+        RegExp(r'(\d{3,4})\s*p', caseSensitive: false).firstMatch(t) ??
+        RegExp(r'_(\d{3,4})p\.').firstMatch(url);
+    if (m != null) return int.parse(m.group(1)!);
+    return RegExp(r'hd|hq', caseSensitive: false).hasMatch(t) ? 720 : 0;
+  }
+
+  @override
+  Future<List<DownloadLink>> resolve(VideoItem v, Http http) async {
+    final base = Uri.parse(v.url);
+    final body = await http.getText(v.url);
+    final title = pageTitle(body, v.title);
+    final links = <DownloadLink>[];
+    final seen = <String>{};
+    for (final m in RegExp(
+      r'''(video_(?:alt_)?url\d*)\s*:\s*['"]([^'"]+)['"]''',
+    ).allMatches(body)) {
+      final raw = m.group(2)!;
+      // License-obfuscated links ("function/0/...") are not supported.
+      if (raw.startsWith('function/') || !raw.contains('/get_file/')) continue;
+      final url = base.resolve(raw).toString();
+      if (!seen.add(url)) continue;
+      final text = RegExp(
+        '${m.group(1)}_text'
+        r'''\s*:\s*['"]([^'"]*)['"]''',
+      ).firstMatch(body)?.group(1);
+      links.add(
+        DownloadLink(
+          _label(text, url),
+          url,
+          false,
+          null,
+          false,
+          'mp4',
+          '$title.mp4',
+        ),
+      );
     }
     if (links.isEmpty) throw 'No download links on page';
     return withSizes(links, http);

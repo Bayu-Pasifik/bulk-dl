@@ -165,6 +165,56 @@ var flashvars_1 = {"video_title":"x","mediaDefinitions":[
     expect(links.firstWhere((l) => l.quality == 720 && !l.hls).mb, 5);
   });
 
+  test('kvs sites: ids, flashvars links with labels, next page', () async {
+    final pt = await reg.classify(
+      'https://www.porntrex.com/video/3415902/slug',
+      FakeHttp(),
+    );
+    expect(pt.extractor.id, 'kvs');
+    expect(pt.kind, UrlKind.video);
+    final tv = await reg.classify(
+      'https://thisvid.com/videos/some-slug/',
+      FakeHttp(),
+    );
+    expect(tv.kind, UrlKind.video);
+    final list = await reg.classify(
+      'https://thisvid.com/latest-updates/',
+      FakeHttp(),
+    );
+    expect(list.kind, UrlKind.playlist);
+
+    const page = '''
+<html><head><title>Kvs Vid</title></head><body><script>
+var flashvars = {
+ video_url: 'https://www.porntrex.com/get_file/4/aa/1/2/2.mp4/',
+ video_url_text: '480p',
+ video_alt_url: 'https://www.porntrex.com/get_file/4/bb/1/2/2_720p.mp4/',
+ video_alt_url_text: '720p HD',
+ video_alt_url2: 'function/0/https://www.porntrex.com/get_file/4/cc/x.mp4/',
+ preview_url: 'https://www.porntrex.com/contents/x.jpg'
+};
+</script></body></html>''';
+    final http = FakeHttp(
+      pages: {pt.uri.toString(): page},
+      heads: {
+        'https://www.porntrex.com/get_file/4/aa/1/2/2.mp4/': _mp4(
+          'https://cdn.x/2.mp4',
+          2097152,
+        ),
+        'https://www.porntrex.com/get_file/4/bb/1/2/2_720p.mp4/': _mp4(
+          'https://cdn.x/2_720.mp4',
+          4194304,
+        ),
+      },
+    );
+    final links = await pt.extractor.resolve(
+      pt.extractor.single(pt.uri, http),
+      http,
+    );
+    expect(links.map((l) => l.quality), [480, 720]);
+    expect(links.last.mb, 4);
+  });
+
   test('unrelated host still falls through to generic', () async {
     final http = FakeHttp(
       pages: {'https://example.org/p': '<video src="/a.mp4"></video>'},

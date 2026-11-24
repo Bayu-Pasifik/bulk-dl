@@ -26,7 +26,9 @@ class AppState extends ChangeNotifier {
     queue.addListener(_syncBg);
     MitakuExtractor.sniffer = (url, title) async =>
         navKey.currentState?.push<String>(
-          MaterialPageRoute(builder: (_) => SniffScreen(url: url, title: title)),
+          MaterialPageRoute(
+            builder: (_) => SniffScreen(url: url, title: title),
+          ),
         );
   }
 

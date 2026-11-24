@@ -52,7 +52,7 @@ Future<void> downloadRanged(
     Future<void> fetch(int start) async {
       final end = math.min(start + chunk, total) - 1;
       var pos = start;
-      for (var attempt = 0;; attempt++) {
+      for (var attempt = 0; ; attempt++) {
         try {
           final r = await dio.get<ResponseBody>(
             url,
@@ -60,7 +60,8 @@ Future<void> downloadRanged(
             options: Options(
               responseType: ResponseType.stream,
               headers: {'Range': 'bytes=$pos-$end'},
-              validateStatus: (s) => s != null && s < 400 && s != 429 && s != 503,
+              validateStatus: (s) =>
+                  s != null && s < 400 && s != 429 && s != 503,
             ),
           );
           if (r.statusCode != 206) {

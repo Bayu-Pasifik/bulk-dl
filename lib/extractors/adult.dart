@@ -12,6 +12,11 @@ import 'extractor.dart';
 /// Shared plumbing for site-specific extractors: host matching, card-based
 /// playlist paging and item creation. Subclasses supply [videoId] and
 /// [resolve].
+const _challengeMarker = 'function leastFactor';
+const _blockedMsg =
+    'Site anti-bot check blocked the request. Wait a minute and retry, '
+    'or try a VPN/proxy';
+
 abstract class SiteExtractor implements Extractor {
   /// Host suffixes handled by this extractor (e.g. `xnxx.com`).
   List<String> get hosts;
@@ -125,7 +130,7 @@ abstract class SiteExtractor implements Extractor {
       try {
         body = await http.getText(next.toString());
         // Anti-bot challenge stub (Pornhub): retry a few times.
-        for (var i = 1; i < 5 && body.contains('function leastFactor'); i++) {
+        for (var i = 1; i < 5 && body.contains(_challengeMarker); i++) {
           await Future<void>.delayed(Duration(seconds: 2 * i));
           body = await http.getText(next.toString());
         }
@@ -139,7 +144,11 @@ abstract class SiteExtractor implements Extractor {
         all.putIfAbsent(e.key, () => e.value);
       }
       onProgress?.call(all.length);
-      if (page == 0 && all.isEmpty) throw 'No videos found at this link';
+      if (page == 0 && all.isEmpty) {
+        throw body.contains(_challengeMarker)
+            ? _blockedMsg
+            : 'No videos found at this link';
+      }
       if (all.length == before) break;
       next = _nextPage(doc, next);
     }
@@ -369,6 +378,7 @@ class MediaDefExtractor extends SiteExtractor {
   Future<List<DownloadLink>> _resolveOnce(VideoItem v, Http http) async {
     final base = Uri.parse(v.url);
     final body = await http.getText(v.url);
+    if (body.contains(_challengeMarker)) throw _blockedMsg;
     final defs = _mediaDefs(body);
     if (defs == null || defs.isEmpty) {
       throw 'No download links on page';

@@ -121,5 +121,8 @@
   "@vpnInvalid": {"placeholders": {"error": {"type": "String"}}},
   "vpnFailed": "VPN gagal: {error}",
   "@vpnFailed": {"placeholders": {"error": {"type": "String"}}},
-  "vpnImport": "Tempel dari clipboard"
+  "vpnImport": "Tempel dari clipboard",
+  "sitesTitle": "Situs yang didukung",
+  "sitesHint": "Ketuk situs untuk menyalin alamatnya. Halaman lain dengan tautan video langsung mungkin juga bisa.",
+  "sitesCopied": "Alamat disalin"
 }

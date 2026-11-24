@@ -136,5 +136,8 @@
   "@vpnInvalid": {"placeholders": {"error": {"type": "String"}}},
   "vpnFailed": "VPN failed: {error}",
   "@vpnFailed": {"placeholders": {"error": {"type": "String"}}},
-  "vpnImport": "Paste from clipboard"
+  "vpnImport": "Paste from clipboard",
+  "sitesTitle": "Supported sites",
+  "sitesHint": "Tap a site to copy its address. Other pages with direct video links may also work.",
+  "sitesCopied": "Address copied"
 }

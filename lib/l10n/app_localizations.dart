@@ -805,6 +805,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Paste from clipboard'**
   String get vpnImport;
+
+  /// No description provided for @sitesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Supported sites'**
+  String get sitesTitle;
+
+  /// No description provided for @sitesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a site to copy its address. Other pages with direct video links may also work.'**
+  String get sitesHint;
+
+  /// No description provided for @sitesCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Address copied'**
+  String get sitesCopied;
 }
 
 class _AppLocalizationsDelegate

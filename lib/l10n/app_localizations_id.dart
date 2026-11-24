@@ -412,4 +412,14 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get vpnImport => 'Tempel dari clipboard';
+
+  @override
+  String get sitesTitle => 'Situs yang didukung';
+
+  @override
+  String get sitesHint =>
+      'Ketuk situs untuk menyalin alamatnya. Halaman lain dengan tautan video langsung mungkin juga bisa.';
+
+  @override
+  String get sitesCopied => 'Alamat disalin';
 }

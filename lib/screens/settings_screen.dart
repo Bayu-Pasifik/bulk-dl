@@ -9,6 +9,7 @@ import '../net/errors.dart';
 import '../net/http_factory.dart';
 import '../net/proxy.dart';
 import '../net/vpn.dart';
+import 'sites_screen.dart';
 
 part 'network_dialogs.dart';
 
@@ -204,6 +205,14 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               section(s.settingsAbout),
+              ListTile(
+                leading: const Icon(Icons.public),
+                title: Text(s.sitesTitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const SitesScreen()),
+                ),
+              ),
               ListTile(
                 leading: const Icon(Icons.info_outline),
                 title: Text(s.appTitle),

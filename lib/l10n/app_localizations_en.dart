@@ -411,4 +411,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vpnImport => 'Paste from clipboard';
+
+  @override
+  String get sitesTitle => 'Supported sites';
+
+  @override
+  String get sitesHint =>
+      'Tap a site to copy its address. Other pages with direct video links may also work.';
+
+  @override
+  String get sitesCopied => 'Address copied';
 }

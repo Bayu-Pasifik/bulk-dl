@@ -1,3 +1,4 @@
+import '../hls.dart';
 import '../models.dart';
 import '../naming.dart';
 import '../net/http.dart';
@@ -45,13 +46,9 @@ class DirectFileExtractor implements Extractor {
   @override
   Future<List<DownloadLink>> resolve(VideoItem v, Http http) async {
     final u = Uri.parse(v.url);
-    if (_isHlsUrl(u)) {
-      return [DownloadLink(0, v.url, false, null, true, 'ts', null)];
-    }
+    if (_isHlsUrl(u)) return hlsLinks(v.url, http);
     final h = await http.head(v.url);
-    if (isHlsType(h.type)) {
-      return [DownloadLink(0, h.url, false, null, true, 'ts', null)];
-    }
+    if (isHlsType(h.type)) return hlsLinks(h.url, http);
     if (h.type != null && h.type!.contains('html')) {
       throw 'Link returned a web page, not a file';
     }

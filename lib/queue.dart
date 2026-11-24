@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'hls.dart';
 import 'library.dart';
 import 'naming.dart';
 import 'scraper.dart';
@@ -421,8 +422,15 @@ class DownloadQueue extends ChangeNotifier {
       DownloadLink? link;
       var offset = 0;
       String? fname;
+      var isHls = false;
       for (final c in cands) {
         final cname = await _target(dir, t.video, c);
+        if (c.hls) {
+          link = c;
+          fname = cname;
+          isHls = true;
+          break;
+        }
         final pf = File('${dir.path}/$cname.part');
         var have = await pf.exists() ? await pf.length() : 0;
         Response<ResponseBody> r;
@@ -455,39 +463,63 @@ class DownloadQueue extends ChangeNotifier {
         offset = r.statusCode == 206 ? have : 0; // 200 = server ignored Range
         break;
       }
-      if (body == null || link == null) {
+      if (link == null || (body == null && !isHls)) {
         throw 'Login required (no free quality available)';
       }
 
       t.quality = link.quality;
-      final name = fname!;
-      final path = '${dir.path}/$name';
-      final part = '$path.part';
-      final len = body.contentLength;
-      final total = len > 0 ? len + offset : 0;
-      var received = offset;
-      t.startMeter(received, total);
-      t.update(s: Status.downloading, p: total > 0 ? received / total : 0);
-      final sink = File(part)
-          .openWrite(mode: offset > 0 ? FileMode.append : FileMode.write);
-      try {
-        await for (final chunk in body.stream) {
-          sink.add(chunk);
-          received += chunk.length;
-          t.sample(received);
-          if (total > 0) t.update(p: received / total);
+      var name = fname!;
+      var path = '${dir.path}/$name';
+      var mime = mimeFor(link.ext);
+      if (isHls) {
+        // Segments are fetched and joined; no resume (restarts from zero).
+        final part = '$path.part';
+        t.startMeter(0, 0);
+        t.update(s: Status.downloading, p: 0);
+        final ext = await downloadHls(
+          scraper.dio,
+          link.url,
+          File(part),
+          token: token,
+          onProgress: (done, total, bytes) {
+            t.sample(bytes);
+            t.update(p: done / total);
+          },
+        );
+        if (ext != extOf(name)) {
+          name = '${stemOf(name)}.$ext';
+          path = '${dir.path}/$name';
+          mime = mimeFor(ext);
         }
-      } finally {
-        await sink.close();
+        await File(part).rename(path);
+      } else {
+        final part = '$path.part';
+        final len = body!.contentLength;
+        final total = len > 0 ? len + offset : 0;
+        var received = offset;
+        t.startMeter(received, total);
+        t.update(s: Status.downloading, p: total > 0 ? received / total : 0);
+        final sink = File(part)
+            .openWrite(mode: offset > 0 ? FileMode.append : FileMode.write);
+        try {
+          await for (final chunk in body.stream) {
+            sink.add(chunk);
+            received += chunk.length;
+            t.sample(received);
+            if (total > 0) t.update(p: received / total);
+          }
+        } finally {
+          await sink.close();
+        }
+        if (total > 0 && received != total) {
+          t.transient = true;
+          throw 'Incomplete download ($received/$total bytes)';
+        }
+        await File(part).rename(path);
       }
-      if (total > 0 && received != total) {
-        t.transient = true;
-        throw 'Incomplete download ($received/$total bytes)';
-      }
-      await File(part).rename(path);
       t.file = path;
       // Move to public Movies/BulkDL so it shows in the gallery.
-      final uri = await lib.export(path, name, mimeFor(link.ext));
+      final uri = await lib.export(path, name, mime);
       if (uri != null) {
         await File(path).delete();
         await lib.add(t.video.id, uri, link.quality);
@@ -504,6 +536,8 @@ class DownloadQueue extends ChangeNotifier {
         err = _dioMessage(e);
         t.transient = _isTransient(e);
       }
+    } on HlsException catch (e) {
+      err = e.message;
     } on Object catch (e) {
       if (e is HttpException ||
           e is SocketException ||

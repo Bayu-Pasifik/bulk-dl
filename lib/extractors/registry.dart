@@ -3,6 +3,7 @@ import '../net/http.dart';
 import 'direct.dart';
 import 'eporner.dart';
 import 'extractor.dart';
+import 'generic.dart';
 
 class Classified {
   Classified(this.extractor, this.kind, this.uri);
@@ -13,7 +14,8 @@ class Classified {
 
 /// Ordered list of extractors; the first one that recognises a URL wins.
 class Registry {
-  Registry([List<Extractor>? list]) : all = list ?? [DirectFileExtractor(), EpornerExtractor()];
+  Registry([List<Extractor>? list]) : all = list ??
+            [DirectFileExtractor(), EpornerExtractor(), GenericHtmlExtractor()];
   final List<Extractor> all;
 
   Extractor byId(String id) =>
@@ -26,10 +28,17 @@ class Registry {
         u.host.isEmpty) {
       throw 'Not a valid http(s) link';
     }
+    Object? firstError;
     for (final e in all) {
-      final k = await e.classify(u, http);
-      if (k != null) return Classified(e, k, u);
+      try {
+        final k = await e.classify(u, http);
+        if (k != null) return Classified(e, k, u);
+      } catch (err) {
+        firstError ??= err;
+      }
     }
+    // Surface a network/HTTP failure rather than a vague "nothing found".
+    if (firstError != null) throw firstError;
     throw 'No downloadable media found at this link';
   }
 }

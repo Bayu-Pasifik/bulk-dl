@@ -20,11 +20,17 @@ class EpornerExtractor implements Extractor {
     }
     // Unknown host: sniff the page for this site's markup.
     if (_videoPath.hasMatch(u.path)) return UrlKind.video;
-    final body = await http.getText(u.replace(path: _basePath(u)).toString());
-    if (RegExp(r'/dload/[^"]+\.mp4').hasMatch(body)) return UrlKind.video;
-    if (html.parse(body).querySelector('a[href^="/video-"]') != null) {
-      return UrlKind.playlist;
-    }
+    try {
+      // A trailing page number (/x/2/) means "page 2 of /x/": sniff page 1.
+      final target = RegExp(r'/\d+/?$').hasMatch(u.path)
+          ? u.replace(path: _basePath(u))
+          : u;
+      final body = await http.getText(target.toString());
+      if (RegExp(r'/dload/[^"]+\.mp4').hasMatch(body)) return UrlKind.video;
+      if (html.parse(body).querySelector('a[href^="/video-"]') != null) {
+        return UrlKind.playlist;
+      }
+    } catch (_) {}
     return null;
   }
 

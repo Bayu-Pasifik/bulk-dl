@@ -1,6 +1,7 @@
 // Local mock of the video site for emulator tests: node tool/mock_server.js
 // Playlist: http://10.0.2.2:8080/playlist/   (emulator -> host machine)
 const http = require('http');
+const extra = require('./mock_extra');
 const N = 8;
 const SIZE = 30 * 1024 * 1024; // 30 MB per file
 const CHUNK = 64 * 1024;
@@ -9,6 +10,7 @@ const DELAY = 40; // ms per chunk -> ~1.6 MB/s
 const vids = [...Array(N)].map((_, i) => ({ id: 'id' + i, slug: 'mock-video-' + i }));
 http.createServer((req, res) => {
   const u = req.url;
+  if (extra(req, res)) return;
   if (u.startsWith('/playlist/')) {
     const page = parseInt(u.split('/')[2]) || 1;
     const items = page === 1 ? vids : [];
@@ -26,6 +28,7 @@ http.createServer((req, res) => {
   // --- direct files (single download tests) ---
   const direct = {
     '/files/clip.mp4': { size: 10 * 1024 * 1024, type: 'video/mp4' },
+    '/files/preview.mp4': { size: 20 * 1024, type: 'video/mp4' },
     '/files/report.pdf': { size: 2 * 1024 * 1024, type: 'application/pdf' },
     '/files/nohead.bin': { size: 3 * 1024 * 1024, type: 'application/octet-stream', noHead: true },
     '/dl?id=7': { size: 4 * 1024 * 1024, type: 'application/octet-stream', name: 'Saved Name.mp4' },

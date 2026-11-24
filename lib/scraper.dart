@@ -138,7 +138,9 @@ class Scraper extends ChangeNotifier {
     pool.sort((a, b) {
       final q = b.quality.compareTo(a.quality);
       if (q != 0) return q;
-      return (a.av1 ? 1 : 0).compareTo(b.av1 ? 1 : 0);
+      final c = (a.av1 ? 1 : 0).compareTo(b.av1 ? 1 : 0);
+      if (c != 0) return c;
+      return (b.mb ?? 0).compareTo(a.mb ?? 0); // bigger = likelier the real one
     });
     return pool;
   }

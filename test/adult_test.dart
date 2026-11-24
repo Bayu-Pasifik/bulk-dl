@@ -215,6 +215,104 @@ var flashvars = {
     expect(links.last.mb, 4);
   });
 
+  test('xhamster: id, h264 master preferred over av1', () async {
+    final k = await reg.classify(
+      'https://xhamster.com/videos/some-title-xh7dwqd',
+      FakeHttp(),
+    );
+    expect(k.extractor.id, 'xhamster');
+    expect(k.kind, UrlKind.video);
+    final l = await reg.classify('https://xhamster.com/newest', FakeHttp());
+    expect(l.kind, UrlKind.playlist);
+
+    const av1 = 'https://v.cdn/key=1/media=hls4/_TPL_.av1.mp4.m3u8';
+    const h264 = 'https://v.cdn/key=1/media=hls4/_TPL_.h264.mp4.m3u8';
+    final http = FakeHttp(
+      pages: {
+        k.uri.toString():
+            '<html><head><title>Xh Vid</title></head><body>'
+            '<script>{"hls":{"url":"${av1.replaceAll('/', r'\/')}"}}</script>'
+            '</body></html>',
+        h264: _master,
+      },
+    );
+    final links = await k.extractor.resolve(
+      k.extractor.single(k.uri, http),
+      http,
+    );
+    expect(links.map((x) => x.quality), [360, 720]);
+    expect(links.every((x) => x.hls), isTrue);
+  });
+
+  test('tnaflix: id, source sizes, trailer skipped', () async {
+    final k = await reg.classify(
+      'https://www.tnaflix.com/amateur-porn/Black-Bred/video12217379',
+      FakeHttp(),
+    );
+    expect(k.extractor.id, 'tnaflix');
+    expect(k.kind, UrlKind.video);
+    final l = await reg.classify('https://www.tnaflix.com/new/', FakeHttp());
+    expect(l.kind, UrlKind.playlist);
+    final http = FakeHttp(
+      pages: {
+        k.uri.toString():
+            '<html><title>Tna Vid</title><video>'
+            '<source src="https://s.x/a-480p.mp4?s=1" type="video/mp4" size="480">'
+            '<source src="https://s.x/a-360p.mp4?s=2" type="video/mp4" size="360">'
+            '<source src="https://c.x/trailer.mp4" type="video/mp4">'
+            '</video></html>',
+      },
+      heads: {
+        'https://s.x/a-480p.mp4?s=1': _mp4(
+          'https://s.x/a-480p.mp4?s=1',
+          3145728,
+        ),
+        'https://s.x/a-360p.mp4?s=2': _mp4(
+          'https://s.x/a-360p.mp4?s=2',
+          1048576,
+        ),
+      },
+    );
+    final links = await k.extractor.resolve(
+      k.extractor.single(k.uri, http),
+      http,
+    );
+    expect(links.map((x) => x.quality), [480, 360]);
+    expect(links.first.mb, 3);
+  });
+
+  test(
+    'generic: preview-only page errors instead of saving the trailer',
+    () async {
+      final http = FakeHttp(
+        pages: {
+          'https://example.org/v':
+              '<video src="https://cdn.x/preview/abc/preview.mp4"></video>',
+        },
+      );
+      final k = await reg.classify('https://example.org/v', http);
+      await expectLater(
+        k.extractor.resolve(k.extractor.single(k.uri, http), http),
+        throwsA(contains('preview')),
+      );
+    },
+  );
+
+  test('generic: image-only ld+json contentUrl is not a video', () async {
+    final http = FakeHttp(
+      pages: {
+        'https://example.org/w':
+            '<script type="application/ld+json">'
+            '{"@type":"ImageObject","contentUrl":"https://x.y/a/poster.jpg"}'
+            '</script>',
+      },
+    );
+    await expectLater(
+      reg.classify('https://example.org/w', http),
+      throwsA(contains('No downloadable media')),
+    );
+  });
+
   test('unrelated host still falls through to generic', () async {
     final http = FakeHttp(
       pages: {'https://example.org/p': '<video src="/a.mp4"></video>'},

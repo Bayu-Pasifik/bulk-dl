@@ -10,6 +10,7 @@ import '../net/http.dart';
 import 'extractor.dart';
 
 const _videoExts = {'mp4', 'webm', 'mkv', 'mov', 'm4v'};
+const _imageExts = {'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'ico', 'avif'};
 
 class _Src {
   _Src(this.url, this.quality);
@@ -72,6 +73,7 @@ class GenericHtmlExtractor implements Extractor {
         return;
       final u = base.resolve(raw);
       if (u.scheme != 'http' && u.scheme != 'https') return;
+      if (_imageExts.contains(extOf(u.path.toLowerCase()))) return;
       final s = u.toString();
       out.putIfAbsent(s, () => _Src(s, q != 0 ? q : _qualityOf(u.path)));
     }
@@ -140,6 +142,11 @@ class GenericHtmlExtractor implements Extractor {
     }
   }
 
+  static bool _isPreview(String url) => RegExp(
+    r'/(preview|trailer)[^/]*.(mp4|webm|m3u8)',
+    caseSensitive: false,
+  ).hasMatch(Uri.tryParse(url)?.path ?? '');
+
   @override
   Future<List<DownloadLink>> resolve(VideoItem v, Http http) async {
     final base = Uri.parse(v.url);
@@ -152,6 +159,7 @@ class GenericHtmlExtractor implements Extractor {
     final title = sanitize(_title(doc, v.title));
     final links = <DownloadLink>[];
     final plain = <_Src>[];
+    var sawPreview = false;
     for (final s in srcs) {
       if (s.hls) {
         try {
@@ -169,6 +177,8 @@ class GenericHtmlExtractor implements Extractor {
             );
           }
         } catch (_) {}
+      } else if (_isPreview(s.url)) {
+        sawPreview = true;
       } else {
         plain.add(s);
       }
@@ -186,7 +196,8 @@ class GenericHtmlExtractor implements Extractor {
     final found = <DownloadLink>[];
     for (var i = 0; i < plain.length; i++) {
       final h = heads[i];
-      if (h != null && h.type != null && h.type!.contains('html')) continue;
+      final t = h?.type ?? '';
+      if (t.contains('html') || t.startsWith('image/')) continue;
       final path = Uri.tryParse(h?.url ?? plain[i].url)?.path ?? '';
       var ext = extOf(path);
       if (ext.isEmpty) ext = extForMime(h?.type) ?? 'mp4';
@@ -205,7 +216,11 @@ class GenericHtmlExtractor implements Extractor {
     }
     final big = found.where((l) => (l.mb ?? 1) >= 0.1).toList();
     links.addAll(big.isEmpty ? found : big);
-    if (links.isEmpty) throw 'No downloadable media found on this page';
+    if (links.isEmpty) {
+      throw sawPreview
+          ? "Only a short preview clip was found; this site's full video player is not supported"
+          : 'No downloadable media found on this page';
+    }
     return links;
   }
 

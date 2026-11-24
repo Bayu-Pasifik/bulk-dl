@@ -23,6 +23,8 @@ class Registry {
             XvideosFamilyExtractor(),
             MediaDefExtractor(),
             KvsExtractor(),
+            XhamsterExtractor(),
+            TnaflixExtractor(),
             EpornerExtractor(),
             GenericHtmlExtractor(),
           ];

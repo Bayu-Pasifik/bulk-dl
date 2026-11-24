@@ -522,3 +522,105 @@ class KvsExtractor extends SiteExtractor {
     return withSizes(links, http);
   }
 }
+
+/// xhamster: the page embeds an HLS master whose name carries the codec
+/// (`_TPL_.av1.mp4.m3u8`). The same master exists for `h264`, which every
+/// player/merger handles, so that one is preferred.
+class XhamsterExtractor extends SiteExtractor {
+  @override
+  String get id => 'xhamster';
+
+  @override
+  List<String> get hosts => const [
+    'xhamster.com',
+    'xhamster2.com',
+    'xhamster3.com',
+  ];
+
+  @override
+  String? videoId(Uri u) {
+    final segs = u.pathSegments.where((s) => s.isNotEmpty).toList();
+    if (segs.length == 2 && segs[0] == 'videos') return segs[1];
+    return null;
+  }
+
+  @override
+  Uri? _nextPage(Document doc, Uri page) {
+    final m = RegExp(r'^(.*?)/(\d+)/?$').firstMatch(page.path);
+    final path = m == null
+        ? '${page.path.endsWith('/') ? page.path.substring(0, page.path.length - 1) : page.path}/2'
+        : '${m.group(1)}/${int.parse(m.group(2)!) + 1}';
+    return page.replace(path: path);
+  }
+
+  @override
+  Future<List<DownloadLink>> resolve(VideoItem v, Http http) async {
+    final body = await http.getText(v.url);
+    final title = pageTitle(body, v.title);
+    final m = RegExp(r'''https:[^"'\\\s]+\.m3u8[^"'\\\s]*''')
+        .firstMatch(body.replaceAll(r'\/', '/'));
+    if (m == null) throw 'No download links on page';
+    final master = m.group(0)!;
+    final candidates = [
+      master.replaceFirst('.av1.', '.h264.'),
+      if (master.contains('.av1.')) master,
+    ];
+    for (final url in candidates) {
+      try {
+        final links = [
+          for (final l in await hlsLinks(url, http))
+            DownloadLink(
+              l.quality,
+              l.url,
+              false,
+              null,
+              true,
+              l.ext,
+              '$title.${l.ext}',
+            ),
+        ];
+        if (links.isNotEmpty) return links;
+      } catch (_) {}
+    }
+    throw 'No download links on page';
+  }
+}
+
+/// tnaflix: the player lists `<source src=... size="480">` mp4 links.
+class TnaflixExtractor extends SiteExtractor {
+  @override
+  String get id => 'tnaflix';
+
+  @override
+  List<String> get hosts => const ['tnaflix.com'];
+
+  @override
+  String? videoId(Uri u) {
+    final m = RegExp(r'/video(\d+)/?$').firstMatch(u.path);
+    return m?.group(1);
+  }
+
+  @override
+  Future<List<DownloadLink>> resolve(VideoItem v, Http http) async {
+    final body = await http.getText(v.url);
+    final title = pageTitle(body, v.title);
+    final base = Uri.parse(v.url);
+    final links = <DownloadLink>[];
+    final seen = <String>{};
+    for (final s in html.parse(body).querySelectorAll('source[src]')) {
+      final src = s.attributes['src'] ?? '';
+      if (src.isEmpty || src.contains('/trailer')) continue;
+      final url = base.resolve(src).toString();
+      if (!seen.add(url)) continue;
+      final q =
+          int.tryParse(s.attributes['size'] ?? '') ??
+          int.tryParse(
+            RegExp(r'-(\d{3,4})p\.').firstMatch(url)?.group(1) ?? '',
+          ) ??
+          0;
+      links.add(DownloadLink(q, url, false, null, false, 'mp4', '$title.mp4'));
+    }
+    if (links.isEmpty) throw 'No download links on page';
+    return withSizes(links, http);
+  }
+}

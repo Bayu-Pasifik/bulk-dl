@@ -522,6 +522,7 @@ class DownloadQueue extends ChangeNotifier {
       String? fname;
       var isHls = false;
       var canRange = false;
+      String? realUrl;
       for (final c in cands) {
         final cname = await _target(dir, t.video, c);
         if (c.hls) {
@@ -557,6 +558,7 @@ class DownloadQueue extends ChangeNotifier {
           continue;
         }
         body = r.data;
+        realUrl = r.realUri.toString(); // after redirects: chunks skip /dload/
         canRange = (r.headers.value('accept-ranges') ?? '')
             .toLowerCase()
             .contains('bytes');
@@ -611,7 +613,7 @@ class DownloadQueue extends ChangeNotifier {
             try {
               await downloadRanged(
                 scraper.dio,
-                link.url,
+                realUrl ?? link.url,
                 File(part),
                 total,
                 token: token,
@@ -726,7 +728,8 @@ class DownloadQueue extends ChangeNotifier {
       case DioExceptionType.connectionError:
         return true;
       case DioExceptionType.badResponse:
-        return (e.response?.statusCode ?? 0) >= 500;
+        final c = e.response?.statusCode ?? 0;
+        return c >= 500 || c == 429;
       default:
         return false;
     }

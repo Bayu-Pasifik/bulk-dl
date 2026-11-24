@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 /// Max simultaneous connections for one download. Starts here, halves on
 /// HTTP 429/503 (rate limit) so hosts that throttle do not fail the download.
@@ -81,6 +82,7 @@ Future<void> downloadRanged(
           final code = e.response?.statusCode;
           if (code == 429 || code == 503) {
             limit = math.max(1, limit ~/ 2); // back off: fewer connections
+            debugPrint('MULTI $code -> limit $limit (attempt $attempt)');
             if (attempt >= 8) rethrow;
             await Future<void>.delayed(Duration(seconds: 1 + attempt));
             continue;
@@ -104,6 +106,7 @@ Future<void> downloadRanged(
       }
     }
 
+    debugPrint('MULTI start total=$total chunk=$chunk conns=$connections');
     await Future.wait([
       for (var i = 0; i < math.min(connections, starts.length); i++) worker(i),
     ]);

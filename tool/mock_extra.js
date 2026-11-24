@@ -22,6 +22,15 @@ module.exports = function handle(req, res) {
     return true;
   }
 
+  // --- big playlist (500 videos) for queue performance tests ---
+  if (u === '/big/') {
+    res.setHeader('content-type', 'text/html');
+    res.end('<html><body>' + Array.from({ length: 500 }, (_, i) =>
+      '<div><a href="/video-big' + i + '/big-video-' + i + '/"><img src="http://placehold/b' + i + '.jpg" alt="Big Video ' + i + '"></a></div>').join('') + '</body></html>');
+    return true;
+  }
+  if (u.startsWith('/big/')) { res.setHeader('content-type', 'text/html'); res.end('<html></html>'); return true; }
+
   // --- generic html pages ---
   const pg = u.match(/^\/page\/v(\d)$/);
   if (pg) {

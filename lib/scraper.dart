@@ -13,7 +13,10 @@ export 'extractors/registry.dart' show Classified;
 export 'models.dart';
 
 /// CDNs that refuse media requests without the site's Referer (HTTP 410/403).
-const _cdnReferers = {'t8cdn.com': 'https://www.tube8.com/'};
+const _cdnReferers = {
+  't8cdn.com': 'https://www.tube8.com/',
+  'mydaddy.cc': 'https://hqporner.com/',
+};
 
 /// Front door for all sites: classifies URLs, lists playlists and resolves
 /// download links through the matching [Extractor]. Caches and throttles.

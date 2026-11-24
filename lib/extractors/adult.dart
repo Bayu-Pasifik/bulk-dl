@@ -452,13 +452,21 @@ class KvsExtractor extends SiteExtractor {
   String get id => 'kvs';
 
   @override
-  List<String> get hosts => const ['thisvid.com', 'porntrex.com'];
+  List<String> get hosts => const [
+    'thisvid.com',
+    'porntrex.com',
+    'sunporno.com',
+  ];
 
   @override
   String? videoId(Uri u) {
     final segs = u.pathSegments.where((s) => s.isNotEmpty).toList();
     if (u.host.endsWith('porntrex.com')) {
       final m = RegExp(r'^/video/(\d+)(?:/|$)').firstMatch(u.path);
+      return m?.group(1);
+    }
+    if (u.host.endsWith('sunporno.com')) {
+      final m = RegExp(r'^/v/(\d+)(?:/|$)').firstMatch(u.path);
       return m?.group(1);
     }
     // thisvid: /videos/<slug>/
@@ -689,6 +697,49 @@ class PornoneExtractor extends SiteExtractor {
             (s.attributes['label'] ?? '').replaceAll(RegExp(r'\D'), ''),
           ) ??
           0;
+      links.add(DownloadLink(q, url, false, null, false, 'mp4', '$title.mp4'));
+    }
+    if (links.isEmpty) throw 'No download links on page';
+    return withSizes(links, http);
+  }
+}
+
+/// hqporner: the video page embeds an `<iframe>` player (another host) whose
+/// source lists one plain mp4 per quality (`.../360.mp4`, `720.mp4`, ...).
+class HqpornerExtractor extends SiteExtractor {
+  @override
+  String get id => 'hqporner';
+
+  @override
+  List<String> get hosts => const ['hqporner.com'];
+
+  @override
+  String? videoId(Uri u) {
+    final m = RegExp(r'^/hdporn/(\d+)-').firstMatch(u.path);
+    return m?.group(1);
+  }
+
+  @override
+  Future<List<DownloadLink>> resolve(VideoItem v, Http http) async {
+    final body = await http.getText(v.url);
+    final title = pageTitle(
+      body,
+      v.title,
+    ).replaceAll(RegExp(r'\s*-\s*HQporner\.com\s*$', caseSensitive: false), '');
+    final src = RegExp(r'''<iframe[^>]+src=["']([^"']*/video/[^"']+)["']''')
+        .firstMatch(body)
+        ?.group(1);
+    if (src == null) throw 'No player found on page';
+    final player = Uri.parse(v.url).resolve(src).toString();
+    final frame = await http.getText(player);
+    final links = <DownloadLink>[];
+    final seen = <int>{};
+    for (final m in RegExp(
+      r'''(?:https?:)?//[^"'\s<>\\]+?/(\d{3,4})\.mp4''',
+    ).allMatches(frame)) {
+      final q = int.parse(m.group(1)!);
+      if (!seen.add(q)) continue;
+      final url = Uri.parse(player).resolve(m.group(0)!).toString();
       links.add(DownloadLink(q, url, false, null, false, 'mp4', '$title.mp4'));
     }
     if (links.isEmpty) throw 'No download links on page';

@@ -376,4 +376,60 @@ var flashvars = {
     expect(k.extractor.id, isNot('xvideos'));
     expect(k.extractor.id, isNot('mediadef'));
   });
+
+  test('sunporno is a kvs site: /v/<id>/ video, /recent/ listing', () async {
+    final v = await reg.classify(
+      'https://www.sunporno.com/v/36324/some-video/',
+      FakeHttp(),
+    );
+    expect(v.extractor.id, 'kvs');
+    expect(v.kind, UrlKind.video);
+    expect(v.extractor.single(v.uri, FakeHttp()).id, '36324');
+    final l = await reg.classify(
+      'https://www.sunporno.com/recent/',
+      FakeHttp(),
+    );
+    expect(l.kind, UrlKind.playlist);
+  });
+
+  test('hqporner: video via iframe player, one mp4 per quality', () async {
+    const page = '''
+<html><head><title>Nice One - HQporner.com</title></head><body>
+<iframe width="560" src="//player.example/video/abc123/"></iframe>
+<iframe src="https://ads.example/smartpop/x"></iframe></body></html>''';
+    const frame = r'''
+<source src=\"//cdn.example/pubs/k/360.mp4\" title=\"360p\">
+<source src=\"//cdn.example/pubs/k/720.mp4\" title=\"720p HD\">
+<script>var q=['//cdn.example/pubs/k/720.mp4'];</script>''';
+    final http = FakeHttp(
+      pages: {
+        'https://hqporner.com/hdporn/12-nice_one.html': page,
+        'https://player.example/video/abc123/': frame,
+      },
+      heads: {
+        'https://cdn.example/pubs/k/360.mp4': _mp4(
+          'https://cdn.example/pubs/k/360.mp4',
+          1048576,
+        ),
+        'https://cdn.example/pubs/k/720.mp4': _mp4(
+          'https://cdn.example/pubs/k/720.mp4',
+          3145728,
+        ),
+      },
+    );
+    final k = await reg.classify(
+      'https://hqporner.com/hdporn/12-nice_one.html',
+      http,
+    );
+    expect(k.extractor.id, 'hqporner');
+    expect(k.kind, UrlKind.video);
+    final item = k.extractor.single(k.uri, http);
+    expect(item.id, '12');
+    final links = await k.extractor.resolve(item, http);
+    expect(links.map((l) => l.quality), [360, 720]);
+    expect(links.last.mb, 3);
+    expect(links.first.fileName, 'Nice One.mp4');
+    final top = await reg.classify('https://hqporner.com/top', FakeHttp());
+    expect(top.kind, UrlKind.playlist);
+  });
 }

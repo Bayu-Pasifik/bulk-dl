@@ -7,13 +7,13 @@ String conf({String? priv, String? pub, String? ep, String? addr}) =>
     '''
 [Interface]
 PrivateKey = ${priv ?? _key}
-${addr == null ? 'Address = 10.0.0.2/32' : addr}
+${addr ?? 'Address = 10.0.0.2/32'}
 DNS = 1.1.1.1 # comment
 
 [Peer]
 PublicKey = ${pub ?? _key}
 AllowedIPs = 0.0.0.0/0
-${ep == null ? 'Endpoint = vpn.example:51820' : ep}
+${ep ?? 'Endpoint = vpn.example:51820'}
 ''';
 
 void main() {

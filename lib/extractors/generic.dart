@@ -69,8 +69,9 @@ class GenericHtmlExtractor implements Extractor {
     void add(String? raw, [int q = 0]) {
       if (raw == null) return;
       raw = raw.trim().replaceAll(r'\/', '/').replaceAll('&amp;', '&');
-      if (raw.isEmpty || raw.startsWith('blob:') || raw.startsWith('data:'))
+      if (raw.isEmpty || raw.startsWith('blob:') || raw.startsWith('data:')) {
         return;
+      }
       final u = base.resolve(raw);
       if (u.scheme != 'http' && u.scheme != 'https') return;
       if (_imageExts.contains(extOf(u.path.toLowerCase()))) return;
@@ -233,8 +234,9 @@ class GenericHtmlExtractor implements Extractor {
       final img = a.querySelector('img');
       if (img == null) continue;
       final h = a.attributes['href']!.trim();
-      if (h.isEmpty || h.startsWith('#') || h.startsWith('javascript:'))
+      if (h.isEmpty || h.startsWith('#') || h.startsWith('javascript:')) {
         continue;
+      }
       final u = page.resolve(h).removeFragment();
       if (u.scheme != 'http' && u.scheme != 'https') continue;
       if (u.path == '/' || u.path.isEmpty) continue;

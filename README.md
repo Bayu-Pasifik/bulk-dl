@@ -5,6 +5,21 @@ and direct file links, with a queue, background service, retry and resume.
 
 Docs: [PRD](docs/PRD.md) · [Style](docs/STYLE.md) · [Tasks](docs/TASKS.md)
 
+## Features
+
+- Sources: Eporner, Mitaku (photo galleries and Byse-hosted videos), direct
+  files, HLS (`.m3u8`, AES-128) and generic pages (og:video, `<video>`,
+  JSON-LD, media links). Multi-URL input and share-sheet intake.
+- Queue: parallel downloads, multi-connection segments, resume (`Range`),
+  retry with backoff (2s, 6s, 15s), search and status filter.
+- Background: foreground service, Wi-Fi-only mode, daily download schedule
+  (time window, wraps midnight).
+- Network: DNS-over-HTTPS with fallback, per-site cookies, proxy and
+  WireGuard VPN.
+- UI: Material You theme (light/dark/system, optional dynamic color),
+  English and Indonesian.
+- In-app update check with SHA-256 shown in the update dialog.
+
 ## Run
 
 ```

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:bulk_dl/scraper.dart';
@@ -129,7 +128,4 @@ void main() {
     expect(formatSize(2048), '2.00 GB');
   });
 
-  test('jsonEncode sanity (fixture helper)', () {
-    expect(jsonDecode('{"a":1}'), {'a': 1});
-  });
 }

@@ -79,8 +79,13 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     _fetch();
   }
 
+  String get _host {
+    final h = Uri.tryParse(urlCtl.text.trim())?.host ?? '';
+    return h.isEmpty ? 'www.eporner.com' : h;
+  }
+
   Future<void> _cookieDialog() async {
-    final ctl = TextEditingController(text: queue.scraper.cookie ?? '');
+    final ctl = TextEditingController(text: queue.scraper.cookies[_host] ?? '');
     final res = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -94,7 +99,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Paste the Cookie header from your logged-in browser to unlock HD links. Stored on this device only.',
+              'Cookie for $_host. Paste the Cookie header from your logged-in browser to unlock HD links. Stored on this device only.',
               style: mono.copyWith(fontSize: 12),
             ),
             const SizedBox(height: 12),
@@ -122,7 +127,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       ),
     );
     if (res != null) {
-      await queue.setCookie(res);
+      await queue.setCookie(_host, res);
       if (mounted) setState(() {});
     }
   }
@@ -243,8 +248,10 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
               GestureDetector(
                 onTap: _cookieDialog,
                 child: NeoTag(
-                  queue.scraper.cookie == null ? 'LOGIN' : 'LOGGED IN',
-                  color: queue.scraper.cookie == null ? Colors.white : green,
+                  queue.scraper.cookies[_host] == null ? 'LOGIN' : 'LOGGED IN',
+                  color: queue.scraper.cookies[_host] == null
+                      ? Colors.white
+                      : green,
                 ),
               ),
             ],

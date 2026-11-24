@@ -112,7 +112,20 @@ class DownloadQueue extends ChangeNotifier {
       _concurrency = p.getInt('s_parallel') ?? _concurrency;
       _wifiOnly = p.getBool('s_wifi') ?? _wifiOnly;
       lastUrl = p.getString('s_url') ?? '';
-      scraper.cookie = p.getString('s_cookie');
+      final cj = p.getString('s_cookies');
+      if (cj != null) {
+        (jsonDecode(cj) as Map<String, dynamic>).forEach(
+          (h, c) => scraper.cookies[h] = c as String,
+        );
+      }
+      // Migrate the old single cookie to the host of the last link.
+      final old = p.getString('s_cookie');
+      if (old != null && old.isNotEmpty) {
+        final h = Uri.tryParse(lastUrl)?.host;
+        scraper.cookies[(h == null || h.isEmpty) ? 'www.eporner.com' : h] = old;
+        await p.remove('s_cookie');
+        await p.setString('s_cookies', jsonEncode(scraper.cookies));
+      }
       notifyListeners();
     } catch (_) {}
   }
@@ -127,15 +140,15 @@ class DownloadQueue extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> setCookie(String? c) async {
+  Future<void> setCookie(String host, String? c) async {
     final v = (c == null || c.trim().isEmpty) ? null : c.trim();
-    scraper.cookie = v;
+    v == null ? scraper.cookies.remove(host) : scraper.cookies[host] = v;
     scraper.done.clear(); // links/sizes may differ when logged in
     scraper.failed.clear();
     scraper.retryFailed(const []);
     try {
       final p = await SharedPreferences.getInstance();
-      v == null ? await p.remove('s_cookie') : await p.setString('s_cookie', v);
+      await p.setString('s_cookies', jsonEncode(scraper.cookies));
     } catch (_) {}
     notifyListeners();
   }
@@ -247,6 +260,8 @@ class DownloadQueue extends ChangeNotifier {
               'origin': t.video.origin,
               'title': t.video.title,
               'thumb': t.video.thumb,
+              'extractor': t.video.extractor,
+              'url': t.video.url,
               'status': t.status.name,
               'quality': t.quality,
               'file': t.file,
@@ -270,6 +285,8 @@ class DownloadQueue extends ChangeNotifier {
           origin: m['origin'] ?? 'https://www.eporner.com',
           title: m['title'],
           thumb: m['thumb'],
+          extractor: m['extractor'] ?? 'eporner',
+          url: m['url'],
         );
         if (tasks.any((t) => t.video.id == v.id)) continue;
         final t = Task(v)..quality = m['quality'];

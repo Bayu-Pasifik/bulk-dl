@@ -10,6 +10,8 @@ import 'net/errors.dart';
 import 'queue.dart';
 import 'scraper.dart';
 import 'screens/picker_screen.dart';
+import 'screens/sniff_screen.dart';
+import 'extractors/mitaku.dart';
 
 /// How a pasted link is treated.
 enum FetchMode { auto, single, playlist }
@@ -22,6 +24,10 @@ class AppState extends ChangeNotifier {
     scraper = Scraper();
     queue = DownloadQueue(scraper);
     queue.addListener(_syncBg);
+    MitakuExtractor.sniffer = (url, title) async =>
+        navKey.currentState?.push<String>(
+          MaterialPageRoute(builder: (_) => SniffScreen(url: url, title: title)),
+        );
   }
 
   late final Scraper scraper;

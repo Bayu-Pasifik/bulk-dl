@@ -46,6 +46,7 @@ dependencies:
   connectivity_plus: ^7.3.2
   pointycastle: ^4.0.0
   dynamic_color: ^2.1.0
+  flutter_inappwebview: ^6.1.5
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -99,3 +100,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+dependency_overrides:
+  flutter_inappwebview_android:
+    path: third_party/flutter_inappwebview_android

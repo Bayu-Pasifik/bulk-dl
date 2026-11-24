@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'extractors/mitaku.dart';
 import 'hls.dart';
 import 'library.dart';
 import 'net/dns.dart';
@@ -132,7 +133,10 @@ class DownloadQueue extends ChangeNotifier {
       final p = await SharedPreferences.getInstance();
       _maxQuality = p.getInt('s_quality') ?? _maxQuality;
       _concurrency = p.getInt('s_parallel') ?? _concurrency;
-      _connections = (p.getInt('s_conns') ?? _connections).clamp(1, kMaxConnections);
+      _connections = (p.getInt('s_conns') ?? _connections).clamp(
+        1,
+        kMaxConnections,
+      );
       _maxPages = p.getInt('s_pages') ?? _maxPages;
       _wifiOnly = p.getBool('s_wifi') ?? _wifiOnly;
       lastUrl = p.getString('s_url') ?? '';
@@ -494,7 +498,12 @@ class DownloadQueue extends ChangeNotifier {
     var end = Status.failed;
     String? err;
     try {
-      final links = await scraper.links(t.video);
+      var links = await scraper.links(t.video);
+      if (MitakuExtractor.needsSniff(t.video)) {
+        await MitakuExtractor.sniff(t.video);
+        scraper.done.remove(t.video.id);
+        links = await scraper.links(t.video);
+      }
       if (token.isCancelled) throw _Canceled();
       final cands = Scraper.candidates(links, maxQuality);
       if (cands.isEmpty) throw 'No download link';
@@ -646,9 +655,8 @@ class DownloadQueue extends ChangeNotifier {
             }
           }
           if (!multi) {
-            final sink = File(part).openWrite(
-              mode: offset > 0 ? FileMode.append : FileMode.write,
-            );
+            final sink = File(part)
+                .openWrite(mode: offset > 0 ? FileMode.append : FileMode.write);
             try {
               await for (final chunk in stream) {
                 sink.add(chunk);
@@ -663,10 +671,12 @@ class DownloadQueue extends ChangeNotifier {
         } finally {
           final secs = sw.elapsedMilliseconds / 1000;
           final mb = (received - offset) / 1048576;
-          debugPrint('SPEED ${mb.toStringAsFixed(1)}MB in '
-              '${secs.toStringAsFixed(1)}s = '
-              '${(mb / (secs > 0 ? secs : 1)).toStringAsFixed(2)}MB/s '
-              '${link.quality} ${Uri.parse(link.url).host}');
+          debugPrint(
+            'SPEED ${mb.toStringAsFixed(1)}MB in '
+            '${secs.toStringAsFixed(1)}s = '
+            '${(mb / (secs > 0 ? secs : 1)).toStringAsFixed(2)}MB/s '
+            '${link.quality} ${Uri.parse(link.url).host}',
+          );
         }
         if (total > 0 && received != total) {
           t.transient = true;
@@ -719,7 +729,6 @@ class DownloadQueue extends ChangeNotifier {
         err = '$err — retry ${t.attempts}/$maxAttempts in ${wait}s';
         Future.delayed(Duration(seconds: wait), () {
           if (t.status == Status.failed && !t.busy) {
-            t.update(s: Status.waiting);
             _pump();
           }
         });

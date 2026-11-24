@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import 'extractors/mitaku.dart';
 import 'extractors/registry.dart';
 import 'models.dart';
 import 'net/http.dart';
@@ -32,6 +33,10 @@ class Scraper extends ChangeNotifier {
                 !o.headers.containsKey('Referer')) {
               o.headers['Referer'] = e.value;
             }
+          }
+          final ref = MitakuExtractor.referers[o.uri.host];
+          if (ref != null && !o.headers.containsKey('Referer')) {
+            o.headers['Referer'] = ref;
           }
           h.next(o);
         },

@@ -19,4 +19,5 @@ const supportedSites = <SupportedSite>[
   SupportedSite('Eporner', 'eporner.com'),
   SupportedSite('ThisVid', 'thisvid.com'),
   SupportedSite('PornTrex', 'porntrex.com'),
+  SupportedSite('Mitaku (foto)', 'mitaku.net'),
 ];

@@ -5,6 +5,7 @@ import 'direct.dart';
 import 'eporner.dart';
 import 'extractor.dart';
 import 'generic.dart';
+import 'mitaku.dart';
 
 class Classified {
   Classified(this.extractor, this.kind, this.uri);
@@ -20,6 +21,7 @@ class Registry {
           list ??
           [
             DirectFileExtractor(),
+            MitakuExtractor(),
             XvideosFamilyExtractor(),
             MediaDefExtractor(),
             KvsExtractor(),

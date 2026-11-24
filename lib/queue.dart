@@ -475,7 +475,7 @@ class DownloadQueue extends ChangeNotifier {
     if (blocked) return;
     while (_active < concurrency) {
       final next = tasks.where((t) => t.status == Status.waiting).firstOrNull;
-      if (next == null) return;
+      if (next == null) break; // still start the 1 Hz ticker below
       _active++;
       next.busy = true;
       next.status = Status.resolving;

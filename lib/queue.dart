@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'library.dart';
+import 'naming.dart';
 import 'scraper.dart';
 
 enum Status { waiting, resolving, downloading, done, failed, canceled }
@@ -403,7 +404,8 @@ class DownloadQueue extends ChangeNotifier {
 
       // Already downloaded at one of the wanted qualities: skip.
       for (final c in cands) {
-        final f = File('${dir.path}/${_name(t.video, c.quality)}');
+        if (!_legacy(t.video)) break; // others: unique names, library check
+        final f = File('${dir.path}/${legacyName(t.video, c.quality)}');
         if (await f.exists() && await f.length() > 0) {
           t.quality = c.quality;
           t.file = f.path;
@@ -418,8 +420,10 @@ class DownloadQueue extends ChangeNotifier {
       ResponseBody? body;
       DownloadLink? link;
       var offset = 0;
+      String? fname;
       for (final c in cands) {
-        final pf = File('${dir.path}/${_name(t.video, c.quality)}.part');
+        final cname = await _target(dir, t.video, c);
+        final pf = File('${dir.path}/$cname.part');
         var have = await pf.exists() ? await pf.length() : 0;
         Response<ResponseBody> r;
         while (true) {
@@ -447,6 +451,7 @@ class DownloadQueue extends ChangeNotifier {
         }
         body = r.data;
         link = c;
+        fname = cname;
         offset = r.statusCode == 206 ? have : 0; // 200 = server ignored Range
         break;
       }
@@ -455,7 +460,8 @@ class DownloadQueue extends ChangeNotifier {
       }
 
       t.quality = link.quality;
-      final path = '${dir.path}/${_name(t.video, link.quality)}';
+      final name = fname!;
+      final path = '${dir.path}/$name';
       final part = '$path.part';
       final len = body.contentLength;
       final total = len > 0 ? len + offset : 0;
@@ -481,7 +487,7 @@ class DownloadQueue extends ChangeNotifier {
       await File(part).rename(path);
       t.file = path;
       // Move to public Movies/BulkDL so it shows in the gallery.
-      final uri = await lib.export(path, _name(t.video, link.quality));
+      final uri = await lib.export(path, name, mimeFor(link.ext));
       if (uri != null) {
         await File(path).delete();
         await lib.add(t.video.id, uri, link.quality);
@@ -563,13 +569,20 @@ class DownloadQueue extends ChangeNotifier {
     }
   }
 
-  /// Unicode-safe, length-capped file name; id keeps it unique.
-  String _name(VideoItem v, int quality) {
-    var title = v.title
-        .replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1f]'), '_')
-        .trim();
-    final runes = title.runes.toList();
-    if (runes.length > 80) title = String.fromCharCodes(runes.take(80));
-    return '${title}_${quality}p_${v.id}.mp4';
+  bool _legacy(VideoItem v) => v.extractor == 'eporner';
+
+  /// File name to write [l] of [v] to inside [dir]. Legacy sites use a fixed
+  /// name; others get `name.ext`, `name (1).ext`... skipping finished files
+  /// but reusing a leftover `.part` (resume).
+  Future<String> _target(Directory dir, VideoItem v, DownloadLink l) async {
+    if (_legacy(v)) return legacyName(v, l.quality);
+    final base = sanitize(l.fileName ?? '${v.title}.${l.ext}');
+    final stem = stemOf(base), ext = extOf(base).isEmpty ? l.ext : extOf(base);
+    for (var n = 0; n < 1000; n++) {
+      final name = numbered(stem, ext, n);
+      if (await File('${dir.path}/$name.part').exists()) return name;
+      if (!await File('${dir.path}/$name').exists()) return name;
+    }
+    return numbered(stem, ext, DateTime.now().millisecondsSinceEpoch);
   }
 }

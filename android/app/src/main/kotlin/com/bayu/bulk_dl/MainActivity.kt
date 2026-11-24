@@ -38,8 +38,9 @@ class MainActivity : FlutterActivity() {
                     "export" -> {
                         val path = call.argument<String>("path")!!
                         val name = call.argument<String>("name")!!
+                        val mime = call.argument<String>("mime") ?: "application/octet-stream"
                         Thread {
-                            val r = try { export(path, name) } catch (e: Exception) { null }
+                            val r = try { export(path, name, mime) } catch (e: Exception) { null }
                             main.post { result.success(r) }
                         }.start()
                     }
@@ -56,23 +57,29 @@ class MainActivity : FlutterActivity() {
             }
     }
 
-    /** Copies [path] into the public Movies/BulkDL folder (gallery visible). */
-    private fun export(path: String, name: String): String? {
+    /** Copies [path] into a public BulkDL folder matching [mime] (gallery/files visible). */
+    private fun export(path: String, name: String, mime: String): String? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+        val (collection, dir) = when {
+            mime.startsWith("video/") -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI to "Movies/BulkDL"
+            mime.startsWith("audio/") -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI to "Music/BulkDL"
+            mime.startsWith("image/") -> MediaStore.Images.Media.EXTERNAL_CONTENT_URI to "Pictures/BulkDL"
+            else -> MediaStore.Downloads.EXTERNAL_CONTENT_URI to "Download/BulkDL"
+        }
         val values = ContentValues().apply {
-            put(MediaStore.Video.Media.DISPLAY_NAME, name)
-            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-            put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/BulkDL")
-            put(MediaStore.Video.Media.IS_PENDING, 1)
+            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            put(MediaStore.MediaColumns.MIME_TYPE, mime)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, dir)
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
         val resolver = contentResolver
-        val uri = resolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values) ?: return null
+        val uri = resolver.insert(collection, values) ?: return null
         try {
             resolver.openOutputStream(uri)!!.use { out ->
                 File(path).inputStream().use { it.copyTo(out, 256 * 1024) }
             }
             values.clear()
-            values.put(MediaStore.Video.Media.IS_PENDING, 0)
+            values.put(MediaStore.MediaColumns.IS_PENDING, 0)
             resolver.update(uri, values, null, null)
         } catch (e: Exception) {
             resolver.delete(uri, null, null)
@@ -98,14 +105,14 @@ class MainActivity : FlutterActivity() {
         val i = if (share) {
             Intent.createChooser(
                 Intent(Intent.ACTION_SEND).apply {
-                    type = "video/mp4"
+                    type = contentResolver.getType(u) ?: "*/*"
                     putExtra(Intent.EXTRA_STREAM, u)
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }, null
             )
         } else {
             Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(u, "video/mp4")
+                setDataAndType(u, contentResolver.getType(u) ?: "*/*")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
         }

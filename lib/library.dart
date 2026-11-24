@@ -55,11 +55,12 @@ class Library {
   }
 
   /// Returns the content:// uri, or null when export is unsupported/failed.
-  Future<String?> export(String path, String name) async {
+  Future<String?> export(String path, String name, String mime) async {
     try {
       return await _ch.invokeMethod<String>('export', {
         'path': path,
         'name': name,
+        'mime': mime,
       });
     } catch (_) {
       return null;

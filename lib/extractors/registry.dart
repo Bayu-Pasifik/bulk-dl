@@ -1,5 +1,6 @@
 import '../models.dart';
 import '../net/http.dart';
+import 'direct.dart';
 import 'eporner.dart';
 import 'extractor.dart';
 
@@ -12,7 +13,7 @@ class Classified {
 
 /// Ordered list of extractors; the first one that recognises a URL wins.
 class Registry {
-  Registry([List<Extractor>? list]) : all = list ?? [EpornerExtractor()];
+  Registry([List<Extractor>? list]) : all = list ?? [DirectFileExtractor(), EpornerExtractor()];
   final List<Extractor> all;
 
   Extractor byId(String id) =>

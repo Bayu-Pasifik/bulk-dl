@@ -23,6 +23,36 @@ http.createServer((req, res) => {
 <a href="/dload/${m[1]}/1080/${m[1]}-1080p.mp4">Download MP4 (1080p, 60 MB)</a>
 <a href="/dload/${m[1]}/360/${m[1]}-360p.mp4">Download MP4 (360p, 12 MB)</a></html>`);
   }
+  // --- direct files (single download tests) ---
+  const direct = {
+    '/files/clip.mp4': { size: 10 * 1024 * 1024, type: 'video/mp4' },
+    '/files/report.pdf': { size: 2 * 1024 * 1024, type: 'application/pdf' },
+    '/files/nohead.bin': { size: 3 * 1024 * 1024, type: 'application/octet-stream', noHead: true },
+    '/dl?id=7': { size: 4 * 1024 * 1024, type: 'application/octet-stream', name: 'Saved Name.mp4' },
+  };
+  const d = direct[u];
+  if (d) {
+    if (req.method === 'HEAD' && d.noHead) { res.statusCode = 405; return res.end(); }
+    console.log(req.method, u, 'range=' + (req.headers.range || '-'));
+    let start = 0;
+    const rr = req.headers.range && req.headers.range.match(/bytes=(d+)-/);
+    if (rr) start = parseInt(rr[1]);
+    res.statusCode = rr ? 206 : 200;
+    res.setHeader('content-type', d.type);
+    res.setHeader('accept-ranges', 'bytes');
+    res.setHeader('content-length', d.size - start);
+    if (rr) res.setHeader('content-range', `bytes ${start}-${d.size - 1}/${d.size}`);
+    if (d.name) res.setHeader('content-disposition', `attachment; filename="${d.name}"`);
+    if (req.method === 'HEAD') return res.end();
+    let sent = start;
+    const b2 = Buffer.alloc(CHUNK, 2);
+    const t2 = setInterval(() => {
+      if (sent >= d.size) { clearInterval(t2); return res.end(); }
+      const n = Math.min(CHUNK, d.size - sent); sent += n; res.write(b2.subarray(0, n));
+    }, 10);
+    req.on('close', () => clearInterval(t2));
+    return;
+  }
   if (u.startsWith('/dload/')) {
     if (u.includes('/1080/') && !(req.headers.cookie || '').includes('sess=ok')) {
       console.log('1080 denied (no cookie)');

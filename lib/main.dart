@@ -157,8 +157,8 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     final p = Scraper.pick(l, queue.maxQuality);
     if (p == null) return 'no download link';
     return p.mb == null
-        ? '${p.quality}p'
-        : '${p.quality}p · ${formatSize(p.mb!)}';
+        ? (p.quality > 0 ? '${p.quality}p' : p.ext)
+        : '${p.quality > 0 ? '${p.quality}p · ' : ''}${formatSize(p.mb!)}';
   }
 
   String _totalLabel() {
@@ -173,10 +173,16 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     return 'Download ${selected.length}$size$unk';
   }
 
+  /// Fetches every link in the input: single files/videos go straight to the
+  /// queue, playlists are listed for selection.
   Future<void> _fetch() async {
-    final url = urlCtl.text.trim();
-    if (!url.startsWith('http')) return;
-    queue.rememberUrl(url);
+    final urls = RegExp(r'https?://\S+')
+        .allMatches(urlCtl.text)
+        .map((m) => m.group(0)!)
+        .toSet()
+        .toList();
+    if (urls.isEmpty) return;
+    queue.rememberUrl(urls.join(' '));
     setState(() {
       loading = true;
       status = 'LOADING...';
@@ -185,18 +191,41 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
       filter = '';
       selected.clear();
     });
+    final singles = <VideoItem>[];
+    final list = <VideoItem>[];
+    final errors = <String>[];
     try {
-      final v = await scraper.fetchPlaylist(
-        url,
-        onProgress: (n) => setState(() => status = '$n VIDEOS FOUND...'),
-      );
+      for (final url in urls) {
+        try {
+          final c = await scraper.classify(url);
+          if (c.kind == UrlKind.playlist) {
+            final v = await c.extractor.listPlaylist(
+              c.uri,
+              scraper.http,
+              onProgress: (n) => setState(
+                () => status = '${list.length + n} VIDEOS FOUND...',
+              ),
+            );
+            list.addAll(v);
+          } else {
+            singles.add(scraper.itemFor(c));
+          }
+        } catch (e) {
+          errors.add('$e');
+        }
+      }
+      if (singles.isNotEmpty) queue.add(singles);
       setState(() {
-        videos = v;
-        selected.addAll(v.where((e) => !_have(e)).map((e) => e.id));
-        status = '${v.length} VIDEOS';
+        videos = list;
+        selected.addAll(list.where((e) => !_have(e)).map((e) => e.id));
+        final parts = <String>[
+          if (list.isNotEmpty) '${list.length} VIDEOS',
+          if (singles.isNotEmpty) '${singles.length} QUEUED',
+          if (errors.isNotEmpty) 'ERROR: ${errors.first}',
+        ];
+        status = parts.isEmpty ? 'NOTHING FOUND' : parts.join(' · ');
       });
-    } catch (e) {
-      setState(() => status = 'ERROR: $e');
+      if (singles.isNotEmpty && list.isEmpty) tabs.animateTo(1);
     } finally {
       setState(() => loading = false);
     }
@@ -738,6 +767,8 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
   }
 }
 
+String _ql(int? q) => (q == null || q == 0) ? '' : ' · ${q}P';
+
 class _TaskTile extends StatelessWidget {
   const _TaskTile(this.t, this.q);
   final Task t;
@@ -762,9 +793,9 @@ class _TaskTile extends StatelessWidget {
         final label = t.status == Status.failed
             ? 'FAILED: ${t.error}'
             : t.status == Status.downloading
-            ? 'DOWNLOADING ${(t.progress * 100).toStringAsFixed(0)}% · ${t.quality}P${t.speed > 0 ? ' · ${formatSpeed(t.speed)}' : ''}'
+            ? 'DOWNLOADING ${(t.progress * 100).toStringAsFixed(0)}% ${_ql(t.quality)}${t.speed > 0 ? ' · ${formatSpeed(t.speed)}' : ''}'
             : t.status == Status.done
-            ? 'DONE · ${t.quality}P'
+            ? 'DONE${_ql(t.quality)}'
             : t.status.name.toUpperCase();
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),

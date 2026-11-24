@@ -79,6 +79,54 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     _fetch();
   }
 
+  Future<void> _cookieDialog() async {
+    final ctl = TextEditingController(text: queue.scraper.cookie ?? '');
+    final res = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: paper,
+        shape: const RoundedRectangleBorder(
+          side: BorderSide(color: ink, width: borderW),
+        ),
+        title: Text('LOGIN COOKIE', style: heavy.copyWith(fontSize: 18)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Paste the Cookie header from your logged-in browser to unlock HD links. Stored on this device only.',
+              style: mono.copyWith(fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctl,
+              maxLines: 4,
+              style: mono.copyWith(fontSize: 12),
+              decoration: const InputDecoration(
+                hintText: 'name=value; name2=value2',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ''),
+            child: const Text('CLEAR'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ctl.text),
+            child: const Text('SAVE'),
+          ),
+        ],
+      ),
+    );
+    if (res != null) {
+      await queue.setCookie(res);
+      if (mounted) setState(() {});
+    }
+  }
+
   void _syncBg() {
     final st = queue.stats();
     final eta = st.eta == null ? '' : ' · ETA ${formatEta(st.eta!)}';
@@ -192,7 +240,13 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                 child: Text('BULK DL', style: heavy.copyWith(fontSize: 28)),
               ),
               const Spacer(),
-              const NeoTag('v1.0', color: Colors.white),
+              GestureDetector(
+                onTap: _cookieDialog,
+                child: NeoTag(
+                  queue.scraper.cookie == null ? 'LOGIN' : 'LOGGED IN',
+                  color: queue.scraper.cookie == null ? Colors.white : green,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 14),

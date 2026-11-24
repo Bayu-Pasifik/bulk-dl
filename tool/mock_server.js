@@ -20,9 +20,16 @@ http.createServer((req, res) => {
   if (m) {
     res.setHeader('content-type', 'text/html');
     return res.end(`<html><a href="/dload/${m[1]}/720/${m[1]}-720p.mp4">Download MP4 (720p, 30 MB)</a>
+<a href="/dload/${m[1]}/1080/${m[1]}-1080p.mp4">Download MP4 (1080p, 60 MB)</a>
 <a href="/dload/${m[1]}/360/${m[1]}-360p.mp4">Download MP4 (360p, 12 MB)</a></html>`);
   }
   if (u.startsWith('/dload/')) {
+    if (u.includes('/1080/') && !(req.headers.cookie || '').includes('sess=ok')) {
+      console.log('1080 denied (no cookie)');
+      res.setHeader('content-type', 'text/html');
+      return res.end('<html>please log in</html>');
+    }
+    if (u.includes('/1080/')) console.log('1080 allowed, cookie=' + req.headers.cookie);
     console.log(req.method, u, 'range=' + (req.headers.range || '-'));
     let start = 0;
     const r = req.headers.range && req.headers.range.match(/bytes=(\d+)-/);

@@ -43,7 +43,23 @@ class Scraper extends ChangeNotifier {
           connectTimeout: const Duration(seconds: 20),
           receiveTimeout: const Duration(seconds: 30),
         ),
-      );
+      ) {
+    // Session cookie (for logged-in HD links), only sent to the site itself.
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (o, h) {
+          final c = cookie;
+          if (c != null && c.isNotEmpty && o.uri.host == Uri.parse(host).host) {
+            o.headers['Cookie'] = c;
+          }
+          h.next(o);
+        },
+      ),
+    );
+  }
+
+  /// Raw `Cookie` header value pasted by the user (optional).
+  String? cookie;
 
   final Dio dio;
 

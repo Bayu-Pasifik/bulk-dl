@@ -112,6 +112,7 @@ class DownloadQueue extends ChangeNotifier {
       _concurrency = p.getInt('s_parallel') ?? _concurrency;
       _wifiOnly = p.getBool('s_wifi') ?? _wifiOnly;
       lastUrl = p.getString('s_url') ?? '';
+      scraper.cookie = p.getString('s_cookie');
       notifyListeners();
     } catch (_) {}
   }
@@ -124,6 +125,19 @@ class DownloadQueue extends ChangeNotifier {
       await p.setBool('s_wifi', _wifiOnly);
       await p.setString('s_url', lastUrl);
     } catch (_) {}
+  }
+
+  Future<void> setCookie(String? c) async {
+    final v = (c == null || c.trim().isEmpty) ? null : c.trim();
+    scraper.cookie = v;
+    scraper.done.clear(); // links/sizes may differ when logged in
+    scraper.failed.clear();
+    scraper.retryFailed(const []);
+    try {
+      final p = await SharedPreferences.getInstance();
+      v == null ? await p.remove('s_cookie') : await p.setString('s_cookie', v);
+    } catch (_) {}
+    notifyListeners();
   }
 
   void rememberUrl(String url) {

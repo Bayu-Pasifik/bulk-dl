@@ -30,6 +30,7 @@ class Registry {
             PornoneExtractor(),
             HqpornerExtractor(),
             HentaicityExtractor(),
+            WatchhentaiExtractor(),
             EpornerExtractor(),
             GenericHtmlExtractor(),
           ];

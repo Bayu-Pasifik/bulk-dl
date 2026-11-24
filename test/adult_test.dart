@@ -503,4 +503,48 @@ var flashvars = {
       expect(l.kind, UrlKind.playlist);
     },
   );
+
+  test(
+    'watchhentai: episode -> player page contentUrl mp4, series listing',
+    () async {
+      const page = '''
+<html><head><meta property="og:title" content="Show Episode 1 - Watch Hentai, Stream Online"></head>
+<body><iframe id="search_iframe" data-primary-player-url="https://watchhentai.net/player/1/1/mp4/"></iframe></body></html>''';
+      const player = '''
+<script type="application/ld+json">{"@type":"VideoObject","contentUrl":"https://hstorage.example/files/show-1.mp4"}</script>''';
+      final http = FakeHttp(
+        pages: {
+          'https://watchhentai.net/videos/show-1/': page,
+          'https://watchhentai.net/player/1/1/mp4/': player,
+          'https://watchhentai.net/series/show/':
+              '<a href="/videos/show-1/"><img src="https://t/1.jpg"></a>',
+        },
+        heads: {
+          'https://hstorage.example/files/show-1.mp4': _mp4(
+            'https://hstorage.example/files/show-1.mp4',
+            5242880,
+          ),
+        },
+      );
+      final k = await reg.classify(
+        'https://watchhentai.net/videos/show-1/',
+        http,
+      );
+      expect(k.extractor.id, 'watchhentai');
+      expect(k.kind, UrlKind.video);
+      final links = await k.extractor.resolve(
+        k.extractor.single(k.uri, http),
+        http,
+      );
+      expect(links.single.mb, 5);
+      expect(links.single.fileName, 'Show Episode 1.mp4');
+      final s = await reg.classify(
+        'https://watchhentai.net/series/show/',
+        http,
+      );
+      expect(s.kind, UrlKind.playlist);
+      final items = await s.extractor.listPlaylist(s.uri, http);
+      expect(items.map((i) => i.id), ['show-1']);
+    },
+  );
 }

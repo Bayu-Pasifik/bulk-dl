@@ -16,6 +16,7 @@ export 'models.dart';
 const _cdnReferers = {
   't8cdn.com': 'https://www.tube8.com/',
   'mydaddy.cc': 'https://hqporner.com/',
+  'hstorage.xyz': 'https://watchhentai.net/',
 };
 
 /// Front door for all sites: classifies URLs, lists playlists and resolves

@@ -800,3 +800,43 @@ class HentaicityExtractor extends SiteExtractor {
     return withSizes(links, http);
   }
 }
+
+/// watchhentai: the episode page points at a player page
+/// (`data-primary-player-url`) whose JSON-LD `contentUrl` is a plain mp4 on a
+/// storage host that needs the site's Referer (see `_cdnReferers`).
+class WatchhentaiExtractor extends SiteExtractor {
+  @override
+  String get id => 'watchhentai';
+
+  @override
+  List<String> get hosts => const ['watchhentai.net'];
+
+  @override
+  String? videoId(Uri u) {
+    final m = RegExp(r'^/videos/([^/]+)/?$').firstMatch(u.path);
+    return m?.group(1);
+  }
+
+  @override
+  Future<List<DownloadLink>> resolve(VideoItem v, Http http) async {
+    final body = await http.getText(v.url);
+    final title = pageTitle(
+      body,
+      v.title,
+    ).replaceAll(RegExp(r'\s*-\s*Watch Hentai.*$', caseSensitive: false), '');
+    final player = RegExp(r'''data-primary-player-url=["']([^"']+)["']''')
+        .firstMatch(body)
+        ?.group(1);
+    if (player == null) throw 'No player found on page';
+    final frame = await http.getText(
+      Uri.parse(v.url).resolve(player).toString(),
+    );
+    final mp4 = RegExp(r'''contentUrl["']?\s*:\s*["']([^"']+\.mp4[^"']*)["']''')
+        .firstMatch(frame)
+        ?.group(1);
+    if (mp4 == null) throw 'No download links on page';
+    return withSizes([
+      DownloadLink(0, mp4, false, null, false, 'mp4', '$title.mp4'),
+    ], http);
+  }
+}

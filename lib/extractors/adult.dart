@@ -124,6 +124,11 @@ abstract class SiteExtractor implements Extractor {
       String body;
       try {
         body = await http.getText(next.toString());
+        // Anti-bot challenge stub (Pornhub): retry a few times.
+        for (var i = 1; i < 5 && body.contains('function leastFactor'); i++) {
+          await Future<void>.delayed(Duration(seconds: 2 * i));
+          body = await http.getText(next.toString());
+        }
       } catch (_) {
         if (page == 0) rethrow;
         break;
@@ -348,8 +353,10 @@ class MediaDefExtractor extends SiteExtractor {
     // Pornhub intermittently answers with a JS challenge page or a 412 on
     // the HLS master: retry a few times before giving up.
     Object? last;
-    for (var attempt = 0; attempt < 4; attempt++) {
-      if (attempt > 0) await Future<void>.delayed(const Duration(seconds: 2));
+    for (var attempt = 0; attempt < 6; attempt++) {
+      if (attempt > 0) {
+        await Future<void>.delayed(Duration(seconds: 2 * attempt));
+      }
       try {
         return await _resolveOnce(v, http);
       } catch (e) {

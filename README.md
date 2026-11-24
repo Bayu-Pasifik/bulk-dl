@@ -7,7 +7,9 @@ Docs: [PRD](docs/PRD.md) · [Style](docs/STYLE.md) · [Tasks](docs/TASKS.md)
 
 ## Features
 
-- Sources: Eporner, Mitaku (photo galleries and Byse-hosted videos), direct
+- Sources: Eporner, XVideos/XNXX, Pornhub family, xHamster, HQPorner,
+  SunPorno, Rule34Video, HentaiCity, WatchHentai and more (see the in-app
+  "Supported sites" list), Mitaku (photo galleries and Byse-hosted videos), direct
   files, HLS (`.m3u8`, AES-128) and generic pages (og:video, `<video>`,
   JSON-LD, media links). Multi-URL input and share-sheet intake.
 - Queue: parallel downloads, multi-connection segments, resume (`Range`),

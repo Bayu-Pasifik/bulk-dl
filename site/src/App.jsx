@@ -39,7 +39,7 @@ function SiteLogo({ site }) {
     <span className="logo">
       {ok ? (
         <img
-          src={`https://www.${site.host}/favicon.ico`}
+          src={`${site.url}/favicon.ico`}
           alt=""
           loading="lazy"
           referrerPolicy="no-referrer"

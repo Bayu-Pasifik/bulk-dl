@@ -1,4 +1,5 @@
 // Keep in sync with lib/sites.dart in the app.
+// Third value false = the site is not served under www.
 export const SITES = [
   ['XVideos', 'xvideos.com'],
   ['XNXX', 'xnxx.com'],
@@ -12,4 +13,13 @@ export const SITES = [
   ['Eporner', 'eporner.com'],
   ['ThisVid', 'thisvid.com'],
   ['PornTrex', 'porntrex.com'],
-].map(([name, host]) => ({ name, host, url: `https://www.${host}` }));
+  ['HQPorner', 'hqporner.com'],
+  ['SunPorno', 'sunporno.com'],
+  ['Rule34Video', 'rule34video.com', false],
+  ['HentaiCity', 'hentaicity.com'],
+  ['WatchHentai', 'watchhentai.net'],
+].map(([name, host, www = true]) => ({
+  name,
+  host,
+  url: `https://${www ? 'www.' : ''}${host}`,
+}));

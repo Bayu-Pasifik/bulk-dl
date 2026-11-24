@@ -1,9 +1,12 @@
 /// Sites with a dedicated extractor, shown on the "Supported sites" screen.
 class SupportedSite {
-  const SupportedSite(this.name, this.host);
+  const SupportedSite(this.name, this.host, {this.www = true});
   final String name;
   final String host;
-  String get url => 'https://www.$host';
+
+  /// Whether the site's canonical address uses the `www.` prefix.
+  final bool www;
+  String get url => 'https://${www ? 'www.' : ''}$host';
 }
 
 const supportedSites = <SupportedSite>[
@@ -19,5 +22,10 @@ const supportedSites = <SupportedSite>[
   SupportedSite('Eporner', 'eporner.com'),
   SupportedSite('ThisVid', 'thisvid.com'),
   SupportedSite('PornTrex', 'porntrex.com'),
+  SupportedSite('HQPorner', 'hqporner.com'),
+  SupportedSite('SunPorno', 'sunporno.com'),
+  SupportedSite('Rule34Video', 'rule34video.com', www: false),
+  SupportedSite('HentaiCity', 'hentaicity.com'),
+  SupportedSite('WatchHentai', 'watchhentai.net'),
   SupportedSite('Mitaku (foto)', 'mitaku.net'),
 ];

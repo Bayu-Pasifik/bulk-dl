@@ -65,7 +65,7 @@ class _SiteLogo extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
       ),
       child: Image.network(
-        'https://www.${site.host}/favicon.ico',
+        '${site.url}/favicon.ico',
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) => fallback,
         loadingBuilder: (_, child, p) => p == null ? child : fallback,

@@ -107,7 +107,7 @@ Dari kode di `lib/`:
 Banyak ISP memblokir situs lewat DNS. Aplikasi menyediakan resolver sendiri.
 
 - F20. Pengaturan **DNS**: Sistem (default) · Cloudflare (`1.1.1.1`) · Google
-  (`8.8.8.8`) · Quad9 (`9.9.9.9`) · Kustom (URL DoH atau IP).
+  (`8.8.8.8`) · DNS.SB (`185.222.222.222`) · Kustom (URL DoH atau IP).
 - F21. Resolusi lewat **DNS-over-HTTPS (DoH)** agar kueri tidak bisa dibelokkan
   ISP. Semua request Dio (halaman, `HEAD`, unduhan, segmen HLS) memakai resolver
   yang sama.

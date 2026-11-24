@@ -71,7 +71,7 @@ Dikerjakan setelah Fase 1 (butuh satu titik pembuatan `Dio`), bisa paralel denga
   semua `Dio`; hapus `Dio(...)` yang tersebar di scraper/queue.
 - [ ] T3B.2 `DohResolver` (`lib/net/doh.dart`): kueri A/AAAA ke endpoint DoH
   (`https://cloudflare-dns.com/dns-query`, `https://dns.google/resolve`,
-  `https://dns.quad9.net:5053/dns-query`) memakai format JSON; cache dengan TTL.
+  `https://185.222.222.222/dns-query`) memakai format JSON; cache dengan TTL.
   Endpoint DoH diakses lewat IP langsung (mis. `1.1.1.1`) agar tidak bergantung
   DNS sistem.
 - [ ] T3B.3 Pasang resolver ke `Dio` lewat `IOHttpClientAdapter.createHttpClient`
@@ -82,7 +82,7 @@ Dikerjakan setelah Fase 1 (butuh satu titik pembuatan `Dio`), bisa paralel denga
   penyedia lain. Deteksi blokir: gagal resolve, IP loopback/`0.0.0.0`, atau
   IP halaman blokir ISP yang dikenal.
 - [ ] T3B.5 Pengaturan DNS di `shared_preferences`: mode (sistem/Cloudflare/
-  Google/Quad9/kustom) + nilai kustom; default **Cloudflare DoH dengan fallback
+  Google/DNS.SB/kustom) + nilai kustom; default **Cloudflare DoH dengan fallback
   ke sistem**.
 - [ ] T3B.6 UI pengaturan DNS (list radio M3) + tombol "Tes DNS" yang
   me-resolve host contoh dan menampilkan IP + penyedia yang dipakai.

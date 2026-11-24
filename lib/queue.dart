@@ -10,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'hls.dart';
 import 'library.dart';
+import 'net/dns.dart';
+import 'net/errors.dart';
 import 'naming.dart';
 import 'scraper.dart';
 
@@ -128,8 +130,30 @@ class DownloadQueue extends ChangeNotifier {
         await p.remove('s_cookie');
         await p.setString('s_cookies', jsonEncode(scraper.cookies));
       }
+      final dm = p.getString('s_dns');
+      DnsResolver.instance.mode = DnsMode.values.firstWhere(
+        (m) => m.name == dm,
+        orElse: () => DnsResolver.instance.mode,
+      );
+      DnsResolver.instance.custom = p.getString('s_dns_custom') ?? '';
       notifyListeners();
     } catch (_) {}
+  }
+
+  DnsMode get dnsMode => DnsResolver.instance.mode;
+  String get dnsCustom => DnsResolver.instance.custom;
+
+  Future<void> setDns(DnsMode mode, String custom) async {
+    final r = DnsResolver.instance;
+    r.mode = mode;
+    r.custom = custom.trim();
+    r.clearCache();
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString('s_dns', mode.name);
+      await p.setString('s_dns_custom', r.custom);
+    } catch (_) {}
+    notifyListeners();
   }
 
   Future<void> _saveSettings() async {
@@ -543,7 +567,7 @@ class DownloadQueue extends ChangeNotifier {
           e is SocketException ||
           e is TimeoutException ||
           e is HandshakeException) {
-        err = 'Connection lost';
+        err = friendlyError(e);
         t.transient = true;
       } else {
         err = '$e';
@@ -588,20 +612,7 @@ class DownloadQueue extends ChangeNotifier {
     }
   }
 
-  String _dioMessage(DioException e) {
-    switch (e.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.receiveTimeout:
-      case DioExceptionType.sendTimeout:
-        return 'Connection timed out';
-      case DioExceptionType.connectionError:
-        return 'No connection';
-      case DioExceptionType.badResponse:
-        return 'Server error ${e.response?.statusCode ?? ''}'.trim();
-      default:
-        return e.message ?? e.type.name;
-    }
-  }
+  String _dioMessage(DioException e) => friendlyError(e);
 
   bool _legacy(VideoItem v) => v.extractor == 'eporner';
 

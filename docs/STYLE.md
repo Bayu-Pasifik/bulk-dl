@@ -96,7 +96,7 @@ Aturan pemakaian:
    progres, kecepatan, tombol batal/ulang; menu overflow "Bersihkan selesai".
 4. **Pengaturan** — kualitas, paralel, Wi-Fi saja, warna dinamis (on/off), tema
    (terang/gelap/sistem), **DNS** (list radio: Sistem, Cloudflare, Google,
-   Quad9, Kustom + tombol "Tes DNS"), cookie per situs.
+   DNS.SB, Kustom + tombol "Tes DNS"), cookie per situs.
 
 ## 7. Gerak
 

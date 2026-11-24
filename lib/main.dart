@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import 'bg.dart';
 import 'neo.dart';
+import 'net/dns.dart';
+import 'net/errors.dart';
 import 'queue.dart';
 import 'scraper.dart';
 
@@ -132,6 +134,95 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
     }
   }
 
+  Future<void> _dnsDialog() async {
+    var mode = queue.dnsMode;
+    final ctl = TextEditingController(text: queue.dnsCustom);
+    String? result;
+    var testing = false;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          backgroundColor: paper,
+          shape: const RoundedRectangleBorder(
+            side: BorderSide(color: ink, width: borderW),
+          ),
+          title: Text('DNS', style: heavy.copyWith(fontSize: 18)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Secure DNS (DNS-over-HTTPS) helps when your ISP blocks a site by DNS. It cannot bypass IP/SNI blocks.',
+                  style: mono.copyWith(fontSize: 12),
+                ),
+                RadioGroup<DnsMode>(
+                  groupValue: mode,
+                  onChanged: (v) => setS(() => mode = v ?? mode),
+                  child: Column(
+                    children: [
+                      for (final m in DnsMode.values)
+                        RadioListTile<DnsMode>(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          value: m,
+                          title: Text(m.label, style: mono.copyWith(fontSize: 13)),
+                        ),
+                    ],
+                  ),
+                ),
+                if (mode == DnsMode.custom)
+                  TextField(
+                    controller: ctl,
+                    style: mono.copyWith(fontSize: 12),
+                    decoration: const InputDecoration(
+                      hintText: 'https://host/dns-query',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                if (result != null)
+                  Text(result!, style: mono.copyWith(fontSize: 12)),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: testing
+                  ? null
+                  : () async {
+                      setS(() {
+                        testing = true;
+                        result = 'Testing...';
+                      });
+                      final r = DnsResolver()
+                        ..mode = mode
+                        ..custom = ctl.text.trim();
+                      try {
+                        final ips = await r.resolve('example.com');
+                        result = 'OK via ${r.lastProvider}: ${ips.first}';
+                      } catch (e) {
+                        result = 'FAILED: ${friendlyError(e)}';
+                      }
+                      setS(() => testing = false);
+                    },
+              child: const Text('TEST'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('SAVE'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok == true) {
+      await queue.setDns(mode, ctl.text);
+      if (mounted) setState(() {});
+    }
+  }
+
   void _syncBg() {
     final st = queue.stats();
     final eta = st.eta == null ? '' : ' · ETA ${formatEta(st.eta!)}';
@@ -211,7 +302,7 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
             singles.add(scraper.itemFor(c));
           }
         } catch (e) {
-          errors.add('$e');
+          errors.add(friendlyError(e));
         }
       }
       if (singles.isNotEmpty) queue.add(singles);
@@ -274,6 +365,16 @@ class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
                 child: Text('BULK DL', style: heavy.copyWith(fontSize: 28)),
               ),
               const Spacer(),
+              GestureDetector(
+                onTap: _dnsDialog,
+                child: NeoTag(
+                  queue.dnsMode == DnsMode.system
+                      ? 'DNS'
+                      : 'DNS·${queue.dnsMode.name.toUpperCase()}',
+                  color: queue.dnsMode == DnsMode.system ? Colors.white : blue,
+                ),
+              ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: _cookieDialog,
                 child: NeoTag(

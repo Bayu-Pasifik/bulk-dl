@@ -9,6 +9,19 @@ const HOST = 'http://10.0.2.2:8080';
 module.exports = function handle(req, res) {
   const u = req.url;
 
+  // --- fake DoH server: every *.blocked.test name resolves to the host ---
+  if (u.startsWith('/dns-query')) {
+    const q = new URL(u, HOST).searchParams;
+    const name = q.get('name') || '';
+    console.log('DoH', q.get('type'), name);
+    res.setHeader('content-type', 'application/dns-json');
+    const ans = name.endsWith('blocked.test') && q.get('type') === 'A'
+      ? { Status: 0, Answer: [{ name, type: 1, TTL: 60, data: '10.0.2.2' }] }
+      : { Status: 3 };
+    res.end(JSON.stringify(ans));
+    return true;
+  }
+
   // --- generic html pages ---
   const pg = u.match(/^\/page\/v(\d)$/);
   if (pg) {

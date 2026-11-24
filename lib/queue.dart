@@ -542,7 +542,7 @@ class DownloadQueue extends ChangeNotifier {
       var canRange = false;
       String? realUrl;
       for (final c in cands) {
-        final cname = await _target(dir, t.video, c);
+        final cname = await targetName(dir, t.video, c);
         if (c.hls) {
           link = c;
           fname = cname;
@@ -701,7 +701,7 @@ class DownloadQueue extends ChangeNotifier {
         end = Status.canceled;
       } else {
         err = _dioMessage(e);
-        t.transient = _isTransient(e);
+        t.transient = isTransient(e);
       }
     } on HlsException catch (e) {
       err = e.message;
@@ -740,7 +740,8 @@ class DownloadQueue extends ChangeNotifier {
     }
   }
 
-  bool _isTransient(DioException e) {
+  @visibleForTesting
+  bool isTransient(DioException e) {
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.receiveTimeout:
@@ -762,7 +763,8 @@ class DownloadQueue extends ChangeNotifier {
   /// File name to write [l] of [v] to inside [dir]. Legacy sites use a fixed
   /// name; others get `name.ext`, `name (1).ext`... skipping finished files
   /// but reusing a leftover `.part` (resume).
-  Future<String> _target(Directory dir, VideoItem v, DownloadLink l) async {
+  @visibleForTesting
+  Future<String> targetName(Directory dir, VideoItem v, DownloadLink l) async {
     if (_legacy(v)) return legacyName(v, l.quality);
     final base = sanitize(l.fileName ?? '${v.title}.${l.ext}');
     final stem = stemOf(base), ext = extOf(base).isEmpty ? l.ext : extOf(base);

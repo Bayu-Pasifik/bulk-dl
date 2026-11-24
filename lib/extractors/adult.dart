@@ -57,32 +57,37 @@ abstract class SiteExtractor implements Extractor {
     final real = <String>{}; // ids whose title came from the page
     for (final a in doc.querySelectorAll('a[href]')) {
       final href = (a.attributes['href'] ?? '').trim();
-      if (href.isEmpty || href.startsWith('#') || href.startsWith('javascript:')) {
+      if (href.isEmpty ||
+          href.startsWith('#') ||
+          href.startsWith('javascript:')) {
         continue;
       }
       final u = page.resolve(href).removeFragment();
       if (!matches(u) || videoId(u) == null) continue;
       final id = videoId(u)!;
-      final img = a.querySelector('img') ??
+      final img =
+          a.querySelector('img') ??
           a.parent?.querySelector('img') ??
           a.parent?.parent?.querySelector('img');
-      final rawThumb = img?.attributes['data-src'] ??
+      final rawThumb =
+          img?.attributes['data-src'] ??
           img?.attributes['data-mediumthumb'] ??
           img?.attributes['src'];
       final thumb = rawThumb == null ? null : page.resolve(rawThumb).toString();
-      final title = (a.attributes['title'] ??
-              img?.attributes['alt'] ??
-              a.text)
+      final title = (a.attributes['title'] ?? img?.attributes['alt'] ?? a.text)
           .replaceAll(RegExp(r'\s+'), ' ')
           .trim();
       final prev = out[id];
-      final goodThumb = (thumb != null && thumb.startsWith('http')) ? thumb : null;
+      final goodThumb = (thumb != null && thumb.startsWith('http'))
+          ? thumb
+          : null;
       if (prev == null) {
         out[id] = _item(u, title: title, thumb: goodThumb);
         if (title.isNotEmpty) real.add(id);
       } else {
         // Same video linked twice (thumb + caption): keep the best of each.
-        final useNew = title.isNotEmpty &&
+        final useNew =
+            title.isNotEmpty &&
             (!real.contains(id) || title.length > prev.title.length);
         if (useNew) real.add(id);
         out[id] = _item(
@@ -138,13 +143,18 @@ abstract class SiteExtractor implements Extractor {
 
   String pageTitle(String body, String fallback) {
     final doc = html.parse(body);
-    final og = doc.querySelector('meta[property="og:title"]')?.attributes['content'];
+    final og = doc
+        .querySelector('meta[property="og:title"]')
+        ?.attributes['content'];
     final t = (og ?? doc.querySelector('title')?.text ?? '').trim();
     return sanitize(t.isEmpty ? fallback : t);
   }
 
   /// Fills in file sizes of plain (non-HLS) links with one HEAD each.
-  Future<List<DownloadLink>> withSizes(List<DownloadLink> links, Http http) async {
+  Future<List<DownloadLink>> withSizes(
+    List<DownloadLink> links,
+    Http http,
+  ) async {
     return Future.wait(
       links.map((l) async {
         if (l.hls) return l;
@@ -152,7 +162,15 @@ abstract class SiteExtractor implements Extractor {
           final h = await http.head(l.url);
           if (h.type != null && h.type!.contains('html')) return l;
           final mb = h.length == null ? null : h.length! / 1048576;
-          return DownloadLink(l.quality, h.url, l.av1, mb, false, l.ext, l.fileName);
+          return DownloadLink(
+            l.quality,
+            h.url,
+            l.av1,
+            mb,
+            false,
+            l.ext,
+            l.fileName,
+          );
         } catch (_) {
           return l;
         }
@@ -169,14 +187,14 @@ class XvideosFamilyExtractor extends SiteExtractor {
 
   @override
   List<String> get hosts => const [
-        'xnxx.com',
-        'xnxx.es',
-        'xnxx.tv',
-        'xvideos.com',
-        'xvideos.es',
-        'xvideos2.com',
-        'xvideos3.com',
-      ];
+    'xnxx.com',
+    'xnxx.es',
+    'xnxx.tv',
+    'xvideos.com',
+    'xvideos.es',
+    'xvideos2.com',
+    'xvideos3.com',
+  ];
 
   // /video-<id>/slug (xnxx), /video.<id>/slug or /video<digits>/slug (xvideos)
   static final _path = RegExp(r'^/video(?:[.-]([a-z0-9]+)|(\d+))(?:/|$)');
@@ -228,7 +246,15 @@ class XvideosFamilyExtractor extends SiteExtractor {
       try {
         for (final l in await hlsLinks(hls, http)) {
           links.add(
-            DownloadLink(l.quality, l.url, false, null, true, l.ext, '$title.${l.ext}'),
+            DownloadLink(
+              l.quality,
+              l.url,
+              false,
+              null,
+              true,
+              l.ext,
+              '$title.${l.ext}',
+            ),
           );
         }
       } catch (_) {}
@@ -247,11 +273,11 @@ class MediaDefExtractor extends SiteExtractor {
 
   @override
   List<String> get hosts => const [
-        'pornhub.com',
-        'pornhub.org',
-        'redtube.com',
-        'youporn.com',
-      ];
+    'pornhub.com',
+    'pornhub.org',
+    'redtube.com',
+    'youporn.com',
+  ];
 
   @override
   String? videoId(Uri u) {
@@ -319,6 +345,21 @@ class MediaDefExtractor extends SiteExtractor {
 
   @override
   Future<List<DownloadLink>> resolve(VideoItem v, Http http) async {
+    // Pornhub intermittently answers with a JS challenge page or a 412 on
+    // the HLS master: retry a few times before giving up.
+    Object? last;
+    for (var attempt = 0; attempt < 4; attempt++) {
+      if (attempt > 0) await Future<void>.delayed(const Duration(seconds: 2));
+      try {
+        return await _resolveOnce(v, http);
+      } catch (e) {
+        last = e;
+      }
+    }
+    throw last ?? 'No download links on page';
+  }
+
+  Future<List<DownloadLink>> _resolveOnce(VideoItem v, Http http) async {
     final base = Uri.parse(v.url);
     final body = await http.getText(v.url);
     final defs = _mediaDefs(body);
@@ -355,7 +396,9 @@ class MediaDefExtractor extends SiteExtractor {
         } catch (_) {}
       } else if (Uri.parse(url).path.endsWith('.mp4')) {
         if (!seen.add(url)) return;
-        links.add(DownloadLink(q, url, false, null, false, 'mp4', '$title.mp4'));
+        links.add(
+          DownloadLink(q, url, false, null, false, 'mp4', '$title.mp4'),
+        );
       } else {
         // Indirection: the url returns a JSON list of {quality, videoUrl}.
         if (!seen.add(url)) return;

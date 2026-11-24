@@ -40,8 +40,11 @@ class DioHttp implements Http {
       options: Options(responseType: ResponseType.plain),
     );
     final body = r.data ?? '';
-    _cache[url] = (DateTime.now(), body);
-    if (_cache.length > 20) _cache.remove(_cache.keys.first);
+    // Anti-bot challenge pages are transient: never serve them from cache.
+    if (!body.contains('function leastFactor')) {
+      _cache[url] = (DateTime.now(), body);
+      if (_cache.length > 20) _cache.remove(_cache.keys.first);
+    }
     return body;
   }
 

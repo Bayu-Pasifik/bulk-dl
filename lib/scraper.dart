@@ -11,6 +11,9 @@ import 'net/http_factory.dart';
 export 'extractors/registry.dart' show Classified;
 export 'models.dart';
 
+/// CDNs that refuse media requests without the site's Referer (HTTP 410/403).
+const _cdnReferers = {'t8cdn.com': 'https://www.tube8.com/'};
+
 /// Front door for all sites: classifies URLs, lists playlists and resolves
 /// download links through the matching [Extractor]. Caches and throttles.
 class Scraper extends ChangeNotifier {
@@ -24,6 +27,12 @@ class Scraper extends ChangeNotifier {
         onRequest: (o, h) {
           final c = cookies[o.uri.host];
           if (c != null && c.isNotEmpty) o.headers['Cookie'] = c;
+          for (final e in _cdnReferers.entries) {
+            if (o.uri.host.endsWith(e.key) &&
+                !o.headers.containsKey('Referer')) {
+              o.headers['Referer'] = e.value;
+            }
+          }
           h.next(o);
         },
       ),

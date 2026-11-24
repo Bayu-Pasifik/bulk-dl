@@ -292,6 +292,7 @@ class MediaDefExtractor extends SiteExtractor {
     'pornhub.org',
     'redtube.com',
     'youporn.com',
+    'tube8.com',
   ];
 
   @override
@@ -310,6 +311,10 @@ class MediaDefExtractor extends SiteExtractor {
     }
     if (host.endsWith('youporn.com')) {
       final m = RegExp(r'^/watch/(\d+)').firstMatch(u.path);
+      return m?.group(1);
+    }
+    if (host.endsWith('tube8.com')) {
+      final m = RegExp(r'^/porn-video/(\d+)').firstMatch(u.path);
       return m?.group(1);
     }
     return null;

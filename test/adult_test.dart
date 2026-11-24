@@ -124,6 +124,12 @@ html5player.setVideoHLS('https://cdn.x/a/hls.m3u8');
       FakeHttp(),
     );
     expect(y.kind, UrlKind.video);
+    final t8 = await reg.classify(
+      'https://www.tube8.com/porn-video/211470951/',
+      FakeHttp(),
+    );
+    expect(t8.extractor.id, 'mediadef');
+    expect(t8.kind, UrlKind.video);
   });
 
   test('mediaDefinitions: hls + mp4 indirection json', () async {

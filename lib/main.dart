@@ -1,12 +1,14 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:dynamic_color/dynamic_color.dart';
+import 'package:material_ui/material_ui.dart';
 
+import 'app_scope.dart';
+import 'app_state.dart';
 import 'bg.dart';
-import 'neo.dart';
-import 'net/dns.dart';
-import 'net/errors.dart';
 import 'queue.dart';
-import 'scraper.dart';
+import 'screens/home_screen.dart';
+import 'screens/queue_screen.dart';
+import 'screens/settings_screen.dart';
+import 'theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,965 +16,146 @@ void main() {
   runApp(const App());
 }
 
-class App extends StatelessWidget {
+class App extends StatefulWidget {
   const App({super.key});
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'Bulk DL',
-    debugShowCheckedModeBanner: false,
-    theme: neoTheme(),
-    home: const Home(),
-  );
+  State<App> createState() => _AppState();
 }
 
-class Home extends StatefulWidget {
-  const Home({super.key});
-  @override
-  State<Home> createState() => _HomeState();
-}
-
-class _HomeState extends State<Home> with SingleTickerProviderStateMixin {
-  final scraper = Scraper();
-  late final queue = DownloadQueue(scraper);
-  late final tabs = TabController(length: 2, vsync: this);
-  final urlCtl = TextEditingController();
-  List<VideoItem> videos = [];
-  final searchCtl = TextEditingController();
-  String filter = '';
-
-  List<VideoItem> get _visible => filter.isEmpty
-      ? videos
-      : videos.where((v) => v.title.toLowerCase().contains(filter)).toList();
-
-  bool _have(VideoItem v) => queue.lib.items.containsKey(v.id);
-  final selected = <String>{};
-  bool loading = false;
-  String status = 'PASTE A LINK';
-  String? savePath;
+class _AppState extends State<App> {
+  final state = AppState();
 
   @override
   void initState() {
     super.initState();
-    queue.outDir().then((d) {
-      if (mounted) setState(() => savePath = d.path);
-    });
-    queue.loadSettings().then((_) {
-      if (mounted) {
-        setState(() => urlCtl.text = queue.lastUrl);
-      }
-      queue.initNet();
-    });
-    queue.lib.load().then((_) => queue.restore());
-    queue.cleanupPartials();
-    BgService.requestPermissions();
-    queue.addListener(_syncBg);
-    queue.lib.onShared(_onShared);
-    queue.lib.initialShare().then((t) {
-      if (t != null) _onShared(t);
-    });
+    state.init();
   }
 
-  /// Text shared from another app: take the first link and fetch it.
-  void _onShared(String text) {
-    final m = RegExp(r'https?://\S+').firstMatch(text);
-    if (m == null || !mounted) return;
-    urlCtl.text = m.group(0)!;
-    tabs.animateTo(0);
-    _fetch();
-  }
-
-  String get _host {
-    final h = Uri.tryParse(urlCtl.text.trim())?.host ?? '';
-    return h.isEmpty ? 'www.eporner.com' : h;
-  }
-
-  Future<void> _cookieDialog() async {
-    final ctl = TextEditingController(text: queue.scraper.cookies[_host] ?? '');
-    final res = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: paper,
-        shape: const RoundedRectangleBorder(
-          side: BorderSide(color: ink, width: borderW),
-        ),
-        title: Text('LOGIN COOKIE', style: heavy.copyWith(fontSize: 18)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Cookie for $_host. Paste the Cookie header from your logged-in browser to unlock HD links. Stored on this device only.',
-              style: mono.copyWith(fontSize: 12),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: ctl,
-              maxLines: 4,
-              style: mono.copyWith(fontSize: 12),
-              decoration: const InputDecoration(
-                hintText: 'name=value; name2=value2',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, ''),
-            child: const Text('CLEAR'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, ctl.text),
-            child: const Text('SAVE'),
-          ),
-        ],
-      ),
-    );
-    if (res != null) {
-      await queue.setCookie(_host, res);
-      if (mounted) setState(() {});
-    }
-  }
-
-  Future<void> _dnsDialog() async {
-    var mode = queue.dnsMode;
-    final ctl = TextEditingController(text: queue.dnsCustom);
-    String? result;
-    var testing = false;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          backgroundColor: paper,
-          shape: const RoundedRectangleBorder(
-            side: BorderSide(color: ink, width: borderW),
-          ),
-          title: Text('DNS', style: heavy.copyWith(fontSize: 18)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Secure DNS (DNS-over-HTTPS) helps when your ISP blocks a site by DNS. It cannot bypass IP/SNI blocks.',
-                  style: mono.copyWith(fontSize: 12),
-                ),
-                RadioGroup<DnsMode>(
-                  groupValue: mode,
-                  onChanged: (v) => setS(() => mode = v ?? mode),
-                  child: Column(
-                    children: [
-                      for (final m in DnsMode.values)
-                        RadioListTile<DnsMode>(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          value: m,
-                          title: Text(m.label, style: mono.copyWith(fontSize: 13)),
-                        ),
-                    ],
-                  ),
-                ),
-                if (mode == DnsMode.custom)
-                  TextField(
-                    controller: ctl,
-                    style: mono.copyWith(fontSize: 12),
-                    decoration: const InputDecoration(
-                      hintText: 'https://host/dns-query',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                if (result != null)
-                  Text(result!, style: mono.copyWith(fontSize: 12)),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: testing
-                  ? null
-                  : () async {
-                      setS(() {
-                        testing = true;
-                        result = 'Testing...';
-                      });
-                      final r = DnsResolver()
-                        ..mode = mode
-                        ..custom = ctl.text.trim();
-                      try {
-                        final ips = await r.resolve('example.com');
-                        result = 'OK via ${r.lastProvider}: ${ips.first}';
-                      } catch (e) {
-                        result = 'FAILED: ${friendlyError(e)}';
-                      }
-                      setS(() => testing = false);
-                    },
-              child: const Text('TEST'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('SAVE'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (ok == true) {
-      await queue.setDns(mode, ctl.text);
-      if (mounted) setState(() {});
-    }
-  }
-
-  void _syncBg() {
-    final st = queue.stats();
-    final eta = st.eta == null ? '' : ' · ETA ${formatEta(st.eta!)}';
-    final spd = st.speed > 0 ? ' · ${formatSpeed(st.speed)}' : '';
-    BgService.sync(
-      active: queue.tasks.where((t) => t.busy).length + st.waiting,
-      text:
-          '${st.active} downloading, ${st.waiting} waiting · ${(st.fraction * 100).toStringAsFixed(0)}%$spd$eta',
-    );
-  }
-
-  double? _sizeOf(VideoItem v) {
-    final l = scraper.done[v.id];
-    if (l == null) return null;
-    return Scraper.pick(l, queue.maxQuality)?.mb;
-  }
-
-  String _sizeLabel(VideoItem v) {
-    final l = scraper.done[v.id];
-    if (l == null) {
-      return scraper.failed.contains(v.id) ? 'size unknown' : '...';
-    }
-    final p = Scraper.pick(l, queue.maxQuality);
-    if (p == null) return 'no download link';
-    return p.mb == null
-        ? (p.quality > 0 ? '${p.quality}p' : p.ext)
-        : '${p.quality > 0 ? '${p.quality}p · ' : ''}${formatSize(p.mb!)}';
-  }
-
-  String _totalLabel() {
-    var total = 0.0;
-    var unknown = 0;
-    for (final v in videos.where((v) => selected.contains(v.id))) {
-      final s = _sizeOf(v);
-      s == null ? unknown++ : total += s;
-    }
-    final size = total > 0 ? ' · ${formatSize(total)}' : '';
-    final unk = unknown > 0 ? ' (+$unknown ?)' : '';
-    return 'Download ${selected.length}$size$unk';
-  }
-
-  /// Fetches every link in the input: single files/videos go straight to the
-  /// queue, playlists are listed for selection.
-  Future<void> _fetch() async {
-    final urls = RegExp(r'https?://\S+')
-        .allMatches(urlCtl.text)
-        .map((m) => m.group(0)!)
-        .toSet()
-        .toList();
-    if (urls.isEmpty) return;
-    queue.rememberUrl(urls.join(' '));
-    setState(() {
-      loading = true;
-      status = 'LOADING...';
-      videos = [];
-      searchCtl.clear();
-      filter = '';
-      selected.clear();
-    });
-    final singles = <VideoItem>[];
-    final list = <VideoItem>[];
-    final errors = <String>[];
-    try {
-      for (final url in urls) {
-        try {
-          final c = await scraper.classify(url);
-          if (c.kind == UrlKind.playlist) {
-            final v = await c.extractor.listPlaylist(
-              c.uri,
-              scraper.http,
-              onProgress: (n) => setState(
-                () => status = '${list.length + n} VIDEOS FOUND...',
-              ),
-            );
-            list.addAll(v);
-          } else {
-            singles.add(scraper.itemFor(c));
-          }
-        } catch (e) {
-          errors.add(friendlyError(e));
-        }
-      }
-      if (singles.isNotEmpty) queue.add(singles);
-      setState(() {
-        videos = list;
-        selected.addAll(list.where((e) => !_have(e)).map((e) => e.id));
-        final parts = <String>[
-          if (list.isNotEmpty) '${list.length} VIDEOS',
-          if (singles.isNotEmpty) '${singles.length} QUEUED',
-          if (errors.isNotEmpty) 'ERROR: ${errors.first}',
-        ];
-        status = parts.isEmpty ? 'NOTHING FOUND' : parts.join(' · ');
-      });
-      if (singles.isNotEmpty && list.isEmpty) tabs.animateTo(1);
-    } finally {
-      setState(() => loading = false);
-    }
+  @override
+  void dispose() {
+    state.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _header(),
-            Expanded(
-              child: TabBarView(
-                controller: tabs,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [_playlistTab(), _queueTab()],
-              ),
-            ),
-          ],
+    return AppScope(
+      state: state,
+      child: ListenableBuilder(
+        listenable: state,
+        builder: (context, _) => DynamicColorBuilder(
+          builder: (lightDyn, darkDyn) {
+            ColorScheme pick(Brightness b, ColorScheme? dyn) =>
+                state.dynamicColor && dyn != null
+                ? dyn.harmonized()
+                : greenScheme(b);
+            return MaterialApp(
+              title: 'Bulk DL',
+              debugShowCheckedModeBanner: false,
+              navigatorKey: state.navKey,
+              scaffoldMessengerKey: state.messengerKey,
+              themeMode: state.themeMode,
+              theme: buildTheme(pick(Brightness.light, lightDyn)),
+              darkTheme: buildTheme(pick(Brightness.dark, darkDyn)),
+              home: const Shell(),
+            );
+          },
         ),
-      ),
-    );
-  }
-
-  Widget _header() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: const BoxDecoration(
-        color: pink,
-        border: Border(
-          bottom: BorderSide(color: ink, width: borderW),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              NeoBox(
-                color: yellow,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                child: Text('BULK DL', style: heavy.copyWith(fontSize: 28)),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: _dnsDialog,
-                child: NeoTag(
-                  queue.dnsMode == DnsMode.system
-                      ? 'DNS'
-                      : 'DNS·${queue.dnsMode.name.toUpperCase()}',
-                  color: queue.dnsMode == DnsMode.system ? Colors.white : blue,
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _cookieDialog,
-                child: NeoTag(
-                  queue.scraper.cookies[_host] == null ? 'LOGIN' : 'LOGGED IN',
-                  color: queue.scraper.cookies[_host] == null
-                      ? Colors.white
-                      : green,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          ListenableBuilder(
-            listenable: Listenable.merge([tabs, queue]),
-            builder: (_, _) {
-              final active = queue.tasks
-                  .where(
-                    (t) =>
-                        t.status == Status.downloading ||
-                        t.status == Status.resolving ||
-                        t.status == Status.waiting,
-                  )
-                  .length;
-              return Row(
-                children: [
-                  Expanded(
-                    child: _tabButton(
-                      0,
-                      'PLAYLIST',
-                      videos.isEmpty ? null : '${videos.length}',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _tabButton(
-                      1,
-                      'QUEUE',
-                      active > 0 ? '$active' : null,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _tabButton(int i, String label, String? badge) {
-    final on = tabs.index == i;
-    return GestureDetector(
-      onTap: () => tabs.animateTo(i),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: on ? ink : Colors.white,
-          border: Border.all(color: ink, width: borderW),
-          boxShadow: on
-              ? null
-              : const [BoxShadow(color: ink, offset: Offset(4, 4))],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              label,
-              style: heavy.copyWith(fontSize: 15, color: on ? yellow : ink),
-            ),
-            if (badge != null) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                color: on ? yellow : ink,
-                child: Text(
-                  badge,
-                  style: mono.copyWith(color: on ? ink : yellow),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _playlistTab() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 18, 20, 0),
-          child: Row(
-            children: [
-              Expanded(
-                child: NeoBox(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: urlCtl,
-                          maxLines: 1,
-                          style: mono.copyWith(fontSize: 14),
-                          decoration: InputDecoration(
-                            hintText: 'PLAYLIST URL',
-                            hintStyle: mono.copyWith(
-                              color: const Color(0xFF888888),
-                            ),
-                            border: InputBorder.none,
-                            isCollapsed: true,
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.content_paste, color: ink),
-                        onPressed: () async {
-                          final d = await Clipboard.getData(
-                            Clipboard.kTextPlain,
-                          );
-                          if (d?.text != null) urlCtl.text = d!.text!.trim();
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              NeoButton(
-                label: 'Fetch',
-                color: blue,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 15,
-                ),
-                onPressed: loading ? null : _fetch,
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 18, 20, 0),
-          child: Row(
-            children: [
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: NeoTag(status, color: yellow, maxLines: 2),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text('MAX', style: heavy.copyWith(fontSize: 13)),
-              const SizedBox(width: 8),
-              NeoDrop<int>(
-                value: queue.maxQuality,
-                items: const [240, 360, 480, 720, 1080, 1440, 2160],
-                label: (q) => '${q}P',
-                color: green,
-                onChanged: (q) => setState(() => queue.maxQuality = q),
-              ),
-            ],
-          ),
-        ),
-        if (videos.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 20, 0),
-            child: NeoBox(
-              padding: const EdgeInsets.only(left: 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.search, color: ink),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: searchCtl,
-                      maxLines: 1,
-                      style: mono.copyWith(fontSize: 14),
-                      onChanged: (t) =>
-                          setState(() => filter = t.trim().toLowerCase()),
-                      decoration: InputDecoration(
-                        hintText: 'FILTER TITLE',
-                        hintStyle: mono.copyWith(
-                          color: const Color(0xFF888888),
-                        ),
-                        border: InputBorder.none,
-                        isCollapsed: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (filter.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.close, color: ink),
-                      onPressed: () => setState(() {
-                        searchCtl.clear();
-                        filter = '';
-                      }),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        if (videos.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 20, 0),
-            child: Row(
-              children: [
-                NeoButton(
-                  label: 'All',
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  onPressed: () => setState(
-                    () => selected.addAll(_visible.map((e) => e.id)),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                NeoButton(
-                  label: 'None',
-                  color: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  onPressed: () => setState(
-                    () => selected.removeAll(_visible.map((e) => e.id)),
-                  ),
-                ),
-                const Spacer(),
-                NeoButton(
-                  icon: Icons.calculate,
-                  label: 'Calc size',
-                  color: orange,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  onPressed: () {
-                    final sel = videos
-                        .where((v) => selected.contains(v.id))
-                        .toList();
-                    scraper.retryFailed(sel);
-                    for (final v in sel) {
-                      scraper.ensure(v);
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-        if (loading)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 20, 0),
-            child: NeoProgress(),
-          ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 18, 20, 12),
-            itemCount: _visible.length,
-            itemBuilder: (_, i) {
-              final v = _visible[i];
-              scraper.ensure(v);
-              final on = selected.contains(v.id);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: GestureDetector(
-                  onTap: () => setState(
-                    () => on ? selected.remove(v.id) : selected.add(v.id),
-                  ),
-                  child: NeoBox(
-                    color: on ? yellow : Colors.white,
-                    padding: const EdgeInsets.all(8),
-                    child: Row(
-                      children: [
-                        _thumb(v),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                v.title.toUpperCase(),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: heavy.copyWith(fontSize: 13),
-                              ),
-                              const SizedBox(height: 6),
-                              ListenableBuilder(
-                                listenable: scraper,
-                                builder: (_, _) => Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: [
-                                    NeoTag(
-                                      _sizeLabel(v),
-                                      color: on ? Colors.white : paper,
-                                    ),
-                                    if (_have(v))
-                                      const NeoTag('DOWNLOADED', color: green),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        NeoCheck(on),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        if (videos.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 14, 20, 16),
-            decoration: const BoxDecoration(
-              color: paper,
-              border: Border(
-                top: BorderSide(color: ink, width: borderW),
-              ),
-            ),
-            child: ListenableBuilder(
-              listenable: scraper,
-              builder: (_, _) => NeoButton(
-                expand: true,
-                icon: Icons.download,
-                color: green,
-                label: _totalLabel(),
-                onPressed: selected.isEmpty
-                    ? null
-                    : () {
-                        queue.add(videos.where((v) => selected.contains(v.id)));
-                        tabs.animateTo(1);
-                      },
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _thumb(VideoItem v) {
-    const w = 92.0, h = 64.0;
-    return Container(
-      width: w,
-      height: h,
-      decoration: BoxDecoration(
-        color: ink,
-        border: Border.all(color: ink, width: 2),
-      ),
-      child: v.thumb == null
-          ? null
-          : Image.network(
-              v.thumb!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => const SizedBox(),
-            ),
-    );
-  }
-
-  Widget _queueTab() {
-    return ListenableBuilder(
-      listenable: queue,
-      builder: (_, _) => Column(
-        children: [
-          if (savePath != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 20, 0),
-              child: NeoBox(
-                color: blue,
-                padding: const EdgeInsets.all(10),
-                child: Row(
-                  children: [
-                    const Icon(Icons.folder, color: ink),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Movies/BulkDL',
-                        style: mono.copyWith(fontSize: 11.5),
-                        maxLines: 3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          Builder(
-            builder: (_) {
-              final st = queue.stats();
-              if (st.active + st.waiting == 0) return const SizedBox.shrink();
-              final paused = queue.blocked;
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 18, 20, 0),
-                child: NeoBox(
-                  color: yellow,
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${st.active} ACTIVE · ${st.waiting} WAITING · ${(st.fraction * 100).toStringAsFixed(0)}%',
-                        style: heavy.copyWith(fontSize: 13),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${st.speed > 0 ? formatSpeed(st.speed) : '--'} · ETA ${st.eta == null ? '--:--' : formatEta(st.eta!)}',
-                        style: mono.copyWith(fontSize: 12),
-                      ),
-                      if (paused) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'PAUSED: WAITING FOR WI-FI',
-                          style: heavy.copyWith(fontSize: 12),
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      NeoProgress(value: st.fraction),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 20, 0),
-            child: GestureDetector(
-              onTap: () => queue.wifiOnly = !queue.wifiOnly,
-              child: Row(
-                children: [
-                  NeoCheck(queue.wifiOnly),
-                  const SizedBox(width: 12),
-                  Text('WI-FI ONLY', style: heavy.copyWith(fontSize: 14)),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 20, 0),
-            child: Row(
-              children: [
-                NeoButton(
-                  label: 'Clear finished',
-                  color: pink,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  onPressed: queue.clearFinished,
-                ),
-                const Spacer(),
-                Text('PARALLEL', style: heavy.copyWith(fontSize: 13)),
-                const SizedBox(width: 8),
-                NeoDrop<int>(
-                  value: queue.concurrency,
-                  items: const [1, 2, 3, 4],
-                  label: (n) => '$n',
-                  color: orange,
-                  onChanged: (n) => setState(() => queue.concurrency = n),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: queue.tasks.isEmpty
-                ? Center(
-                    child: NeoBox(
-                      color: Colors.white,
-                      child: Text(
-                        'QUEUE EMPTY',
-                        style: heavy.copyWith(fontSize: 18),
-                      ),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 18, 20, 16),
-                    itemCount: queue.tasks.length,
-                    itemBuilder: (_, i) => _TaskTile(queue.tasks[i], queue),
-                  ),
-          ),
-        ],
       ),
     );
   }
 }
 
-String _ql(int? q) => (q == null || q == 0) ? '' : ' · ${q}P';
+class Shell extends StatefulWidget {
+  const Shell({super.key});
+  @override
+  State<Shell> createState() => _ShellState();
+}
 
-class _TaskTile extends StatelessWidget {
-  const _TaskTile(this.t, this.q);
-  final Task t;
-  final DownloadQueue q;
+class _ShellState extends State<Shell> {
+  bool _asked = false;
 
-  Color get _color => switch (t.status) {
-    Status.waiting => grey,
-    Status.resolving => blue,
-    Status.downloading => yellow,
-    Status.done => green,
-    Status.failed => pink,
-    Status.canceled => orange,
-  };
+  Future<void> _maybeDisclaimer(AppState app) async {
+    if (_asked || app.disclaimerSeen) return;
+    _asked = true;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.gavel_outlined),
+        title: const Text('Sebelum mulai'),
+        content: const Text(
+          'Bulk DL hanya alat pengunduh. Unduh hanya konten yang kamu berhak simpan, dan patuhi hukum serta ketentuan situs. Kamu bertanggung jawab atas penggunaan dan hak cipta. Konten berDRM tidak didukung.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () {
+              app.acceptDisclaimer();
+              Navigator.pop(ctx);
+            },
+            child: const Text('Mengerti'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: t,
-      builder: (_, _) {
-        final active =
-            t.status == Status.downloading || t.status == Status.resolving;
-        final label = t.status == Status.failed
-            ? 'FAILED: ${t.error}'
-            : t.status == Status.downloading
-            ? 'DOWNLOADING ${(t.progress * 100).toStringAsFixed(0)}% ${_ql(t.quality)}${t.speed > 0 ? ' · ${formatSpeed(t.speed)}' : ''}'
-            : t.status == Status.done
-            ? 'DONE${_ql(t.quality)}'
-            : t.status.name.toUpperCase();
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: NeoBox(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        t.video.title.toUpperCase(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: heavy.copyWith(fontSize: 13),
-                      ),
-                      const SizedBox(height: 8),
-                      NeoTag(label, color: _color, maxLines: 2),
-                      if (active) ...[
-                        const SizedBox(height: 10),
-                        NeoProgress(
-                          value: t.status == Status.downloading
-                              ? t.progress
-                              : null,
-                        ),
-                      ],
-                    ],
-                  ),
+    final app = AppScope.of(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _maybeDisclaimer(app);
+    });
+    return ValueListenableBuilder<int>(
+      valueListenable: app.tab,
+      builder: (context, i, _) => Scaffold(
+        body: IndexedStack(
+          index: i,
+          children: const [HomeScreen(), QueueScreen(), SettingsScreen()],
+        ),
+        bottomNavigationBar: ListenableBuilder(
+          listenable: app.queue,
+          builder: (context, _) {
+            final active = app.queue.tasks
+                .where(
+                  (t) =>
+                      t.status == Status.downloading ||
+                      t.status == Status.resolving ||
+                      t.status == Status.waiting,
+                )
+                .length;
+            return NavigationBar(
+              selectedIndex: i,
+              onDestinationSelected: (v) => app.tab.value = v,
+              destinations: [
+                const NavigationDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home),
+                  label: 'Beranda',
                 ),
-                const SizedBox(width: 12),
-                if (active || t.status == Status.waiting)
-                  NeoButton(
-                    icon: Icons.close,
-                    color: pink,
-                    padding: const EdgeInsets.all(8),
-                    onPressed: () => q.cancel(t),
-                  )
-                else if (t.status == Status.failed ||
-                    t.status == Status.canceled)
-                  NeoButton(
-                    icon: Icons.refresh,
-                    color: yellow,
-                    padding: const EdgeInsets.all(8),
-                    onPressed: () => q.retry(t),
-                  )
-                else if (t.file?.startsWith('content://') ?? false)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      NeoButton(
-                        icon: Icons.play_arrow,
-                        color: green,
-                        padding: const EdgeInsets.all(8),
-                        onPressed: () => q.lib.open(t.file!),
-                      ),
-                      const SizedBox(width: 8),
-                      NeoButton(
-                        icon: Icons.share,
-                        color: blue,
-                        padding: const EdgeInsets.all(8),
-                        onPressed: () => q.lib.share(t.file!),
-                      ),
-                    ],
-                  )
-                else
-                  const NeoBox(
-                    color: green,
-                    shadow: 0,
-                    padding: EdgeInsets.all(6),
-                    child: Icon(Icons.check, color: ink),
+                NavigationDestination(
+                  icon: Badge(
+                    isLabelVisible: active > 0,
+                    label: Text('$active'),
+                    child: const Icon(Icons.download_outlined),
                   ),
+                  selectedIcon: Badge(
+                    isLabelVisible: active > 0,
+                    label: Text('$active'),
+                    child: const Icon(Icons.download),
+                  ),
+                  label: 'Antrean',
+                ),
+                const NavigationDestination(
+                  icon: Icon(Icons.settings_outlined),
+                  selectedIcon: Icon(Icons.settings),
+                  label: 'Pengaturan',
+                ),
               ],
-            ),
-          ),
-        );
-      },
+            );
+          },
+        ),
+      ),
     );
   }
 }

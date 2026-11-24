@@ -1,0 +1,332 @@
+import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'bg.dart';
+import 'net/errors.dart';
+import 'queue.dart';
+import 'scraper.dart';
+import 'screens/picker_screen.dart';
+
+/// How a pasted link is treated.
+enum FetchMode { auto, single, playlist }
+
+enum FetchResult { picker, queued, nothing }
+
+/// Everything the screens share: queue, playlist selection and settings.
+class AppState extends ChangeNotifier {
+  AppState() {
+    scraper = Scraper();
+    queue = DownloadQueue(scraper);
+    queue.addListener(_syncBg);
+  }
+
+  late final Scraper scraper;
+  late final DownloadQueue queue;
+  final navKey = GlobalKey<NavigatorState>();
+  final messengerKey = GlobalKey<ScaffoldMessengerState>();
+
+  /// Selected bottom-navigation tab (0 home, 1 queue, 2 settings).
+  final tab = ValueNotifier<int>(0);
+
+  // --- input / fetch ---
+  final urlCtl = TextEditingController();
+  FetchMode mode = FetchMode.auto;
+  bool loading = false;
+  String? message;
+  bool messageIsError = false;
+  List<String> recent = [];
+
+  // --- playlist picker ---
+  List<VideoItem> videos = [];
+  final selected = <String>{};
+  final searchCtl = TextEditingController();
+  String filter = '';
+
+  // --- appearance / onboarding ---
+  ThemeMode themeMode = ThemeMode.system;
+  bool dynamicColor = false; // green by default; wallpaper colours are opt-in
+  bool disclaimerSeen = true;
+  String? savePath;
+
+  Future<void> init() async {
+    queue.outDir().then((d) {
+      savePath = d.path;
+      notifyListeners();
+    });
+    await queue.loadSettings();
+    await _loadPrefs();
+    urlCtl.text = queue.lastUrl;
+    queue.initNet();
+    queue.lib.load().then((_) => queue.restore());
+    queue.cleanupPartials();
+    BgService.requestPermissions();
+    queue.lib.onShared(onShared);
+    final t = await queue.lib.initialShare();
+    if (t != null) onShared(t);
+    notifyListeners();
+  }
+
+  Future<void> _loadPrefs() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      themeMode = ThemeMode.values.firstWhere(
+        (m) => m.name == p.getString('s_theme'),
+        orElse: () => ThemeMode.system,
+      );
+      dynamicColor = p.getBool('s_dyn') ?? false;
+      recent = p.getStringList('s_recent') ?? [];
+      disclaimerSeen = p.getBool('s_disclaimer') ?? false;
+    } catch (_) {}
+  }
+
+  Future<void> _savePref(String k, Object v) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      if (v is String) await p.setString(k, v);
+      if (v is bool) await p.setBool(k, v);
+      if (v is List<String>) await p.setStringList(k, v);
+    } catch (_) {}
+  }
+
+  void setThemeMode(ThemeMode m) {
+    themeMode = m;
+    _savePref('s_theme', m.name);
+    notifyListeners();
+  }
+
+  void setDynamicColor(bool v) {
+    dynamicColor = v;
+    _savePref('s_dyn', v);
+    notifyListeners();
+  }
+
+  void acceptDisclaimer() {
+    disclaimerSeen = true;
+    _savePref('s_disclaimer', true);
+    notifyListeners();
+  }
+
+  void refresh() => notifyListeners();
+
+  void setMode(FetchMode m) {
+    mode = m;
+    notifyListeners();
+  }
+
+  Future<void> paste() async {
+    final d = await Clipboard.getData(Clipboard.kTextPlain);
+    final t = d?.text?.trim();
+    if (t != null && t.isNotEmpty) {
+      urlCtl.text = t;
+      notifyListeners();
+    }
+  }
+
+  void snack(String text) => messengerKey.currentState
+    ?..clearSnackBars()
+    ..showSnackBar(SnackBar(content: Text(text)));
+
+  /// Text shared from another app: take its links and fetch them.
+  void onShared(String text) {
+    final urls = extractUrls(text);
+    if (urls.isEmpty) return;
+    urlCtl.text = urls.join('\n');
+    tab.value = 0;
+    fetch().then(_afterFetch);
+  }
+
+  void _afterFetch(FetchResult r) {
+    if (r == FetchResult.picker) openPicker();
+  }
+
+  void openPicker() {
+    navKey.currentState?.push(
+      MaterialPageRoute<void>(builder: (_) => const PickerScreen()),
+    );
+  }
+
+  static List<String> extractUrls(String text) => RegExp(
+    r'https?://[^\s]+',
+  ).allMatches(text).map((m) => m.group(0)!).toSet().toList();
+
+  /// Classifies every link: files/videos go to the queue (mode permitting),
+  /// playlists are collected for the picker.
+  Future<FetchResult> fetch() async {
+    final urls = extractUrls(urlCtl.text);
+    if (urls.isEmpty) {
+      message = 'Tempel link yang diawali http:// atau https://';
+      messageIsError = true;
+      notifyListeners();
+      return FetchResult.nothing;
+    }
+    queue.rememberUrl(urls.join(' '));
+    loading = true;
+    message = 'Menganalisis ${urls.length} link...';
+    messageIsError = false;
+    videos = [];
+    searchCtl.clear();
+    filter = '';
+    selected.clear();
+    notifyListeners();
+
+    final singles = <VideoItem>[];
+    final list = <VideoItem>[];
+    final errors = <String>[];
+    try {
+      for (final url in urls) {
+        try {
+          final c = await scraper.classify(url);
+          final isList = c.kind == UrlKind.playlist;
+          if (isList && mode == FetchMode.single) {
+            throw 'Link ini playlist — pilih mode Otomatis atau Playlist';
+          }
+          if (isList) {
+            list.addAll(
+              await c.extractor.listPlaylist(
+                c.uri,
+                scraper.http,
+                onProgress: (n) {
+                  message = '${list.length + n} video ditemukan...';
+                  notifyListeners();
+                },
+              ),
+            );
+          } else if (mode == FetchMode.playlist) {
+            list.add(scraper.itemFor(c));
+          } else {
+            singles.add(scraper.itemFor(c));
+          }
+        } catch (e) {
+          errors.add(friendlyError(e));
+        }
+      }
+      if (singles.isNotEmpty) queue.add(singles);
+      videos = list;
+      selected.addAll(list.where((e) => !isDownloaded(e)).map((e) => e.id));
+      _remember(urls);
+      final parts = <String>[
+        if (list.isNotEmpty) '${list.length} video',
+        if (singles.isNotEmpty) '${singles.length} masuk antrean',
+        if (errors.isNotEmpty) errors.first,
+      ];
+      message = parts.isEmpty ? 'Tidak ada yang ditemukan' : parts.join(' · ');
+      messageIsError = errors.isNotEmpty && list.isEmpty && singles.isEmpty;
+      if (list.isNotEmpty) return FetchResult.picker;
+      if (singles.isNotEmpty) {
+        tab.value = 1;
+        return FetchResult.queued;
+      }
+      return FetchResult.nothing;
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
+  void _remember(List<String> urls) {
+    for (final u in urls.reversed) {
+      recent.remove(u);
+      recent.insert(0, u);
+    }
+    if (recent.length > 8) recent = recent.sublist(0, 8);
+    _savePref('s_recent', recent);
+  }
+
+  void clearRecent() {
+    recent = [];
+    _savePref('s_recent', <String>[]);
+    notifyListeners();
+  }
+
+  // --- picker helpers ---
+  bool isDownloaded(VideoItem v) => queue.lib.items.containsKey(v.id);
+
+  List<VideoItem> get visible => filter.isEmpty
+      ? videos
+      : videos.where((v) => v.title.toLowerCase().contains(filter)).toList();
+
+  void setFilter(String t) {
+    filter = t.trim().toLowerCase();
+    notifyListeners();
+  }
+
+  void toggle(VideoItem v) {
+    selected.contains(v.id) ? selected.remove(v.id) : selected.add(v.id);
+    notifyListeners();
+  }
+
+  void selectAll() {
+    selected.addAll(visible.map((e) => e.id));
+    notifyListeners();
+  }
+
+  void selectNone() {
+    selected.removeAll(visible.map((e) => e.id));
+    notifyListeners();
+  }
+
+  void calcSizes() {
+    final sel = videos.where((v) => selected.contains(v.id)).toList();
+    scraper.retryFailed(sel);
+    for (final v in sel) {
+      scraper.ensure(v);
+    }
+  }
+
+  double? sizeOf(VideoItem v) {
+    final l = scraper.done[v.id];
+    return l == null ? null : Scraper.pick(l, queue.maxQuality)?.mb;
+  }
+
+  String sizeLabel(VideoItem v) {
+    final l = scraper.done[v.id];
+    if (l == null) {
+      return scraper.failed.contains(v.id) ? 'ukuran tidak diketahui' : '...';
+    }
+    final p = Scraper.pick(l, queue.maxQuality);
+    if (p == null) return 'tidak ada link';
+    final q = p.quality > 0 ? '${p.quality}p' : p.ext;
+    return p.mb == null ? q : '$q · ${formatSize(p.mb!)}';
+  }
+
+  String totalLabel() {
+    var total = 0.0;
+    var unknown = 0;
+    for (final v in videos.where((v) => selected.contains(v.id))) {
+      final s = sizeOf(v);
+      s == null ? unknown++ : total += s;
+    }
+    final size = total > 0 ? ' · ${formatSize(total)}' : '';
+    final unk = unknown > 0 ? ' (+$unknown ?)' : '';
+    return 'Unduh ${selected.length}$size$unk';
+  }
+
+  /// Adds the selection to the queue and shows it.
+  void downloadSelected() {
+    queue.add(videos.where((v) => selected.contains(v.id)));
+    tab.value = 1;
+    navKey.currentState?.popUntil((r) => r.isFirst);
+  }
+
+  void _syncBg() {
+    final st = queue.stats();
+    final eta = st.eta == null ? '' : ' · ETA ${formatEta(st.eta!)}';
+    final spd = st.speed > 0 ? ' · ${formatSpeed(st.speed)}' : '';
+    BgService.sync(
+      active: queue.tasks.where((t) => t.busy).length + st.waiting,
+      text:
+          '${st.active} mengunduh, ${st.waiting} menunggu · ${(st.fraction * 100).toStringAsFixed(0)}%$spd$eta',
+    );
+  }
+
+  @override
+  void dispose() {
+    queue.removeListener(_syncBg);
+    queue.dispose();
+    urlCtl.dispose();
+    searchCtl.dispose();
+    tab.dispose();
+    super.dispose();
+  }
+}

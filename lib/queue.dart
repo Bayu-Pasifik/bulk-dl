@@ -69,7 +69,7 @@ class Task extends ChangeNotifier {
   }
 }
 
-String formatSpeed(double bps) => '${(bps / 1048576).toStringAsFixed(1)} MB/S';
+String formatSpeed(double bps) => '${(bps / 1048576).toStringAsFixed(1)} MB/s';
 
 String formatEta(int sec) {
   final h = sec ~/ 3600, m = (sec % 3600) ~/ 60, s = sec % 60;

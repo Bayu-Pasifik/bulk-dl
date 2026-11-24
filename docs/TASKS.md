@@ -120,6 +120,23 @@ Dikerjakan setelah Fase 1 (butuh satu titik pembuatan `Dio`), bisa paralel denga
 - [~] T5.5 Uji manual di perangkat Android 8, 12, dan terbaru.
 - [x] T5.6 Naikkan versi di `pubspec.yaml`; build APK rilis.
 
+## Fase 6 — Fitur lanjutan dan rilis (v1.3–v1.5)
+
+- [x] T6.1 Extractor Mitaku: galeri foto dan video Byse lewat tangkapan WebView.
+- [x] T6.2 Proxy dan VPN WireGuard (`lib/net/proxy.dart`, `lib/net/vpn.dart`).
+- [x] T6.3 Cek update di aplikasi (v1.3.0): cek rilis GitHub, unduh APK per ABI.
+- [x] T6.4 Tanda tangan rilis (keystore privat), SHA-256 di dialog update,
+  workflow rilis berbasis tag `v*` (v1.4.0).
+- [x] T6.5 Tes unit antrean: state, statistik, persist, kebijakan retry,
+  penamaan file.
+- [x] T6.6 Pencarian dan filter status di layar antrean.
+- [x] T6.7 Jadwal unduh harian (jendela waktu, melewati tengah malam), tersimpan
+  di `shared_preferences`.
+- [x] T6.8 Bersihkan lint (`flutter analyze` bersih), naikkan ke v1.5.0, update
+  README.
+- [ ] T6.9 Tes widget/integrasi (saat ini hanya tes unit logika).
+- [ ] T6.10 Pindah `actions/setup-java` ke v5 di workflow rilis (v4 deprecated).
+
 ## Urutan dan ketergantungan
 
 ```
@@ -127,7 +144,7 @@ F0 → F1 → F2 → F3
         ↘ ↘
          ↘ F3B (DNS, setelah T1.x; paralel dengan F2/F3)
           F4 (bisa paralel dengan F2/F3 setelah T4.4 memecah main.dart)
-F2+F3+F3B+F4 → F5
+F2+F3+F3B+F4 → F5 → F6
 ```
 
 ## Definisi selesai (tiap tugas)
@@ -139,7 +156,7 @@ F2+F3+F3B+F4 → F5
 
 ## Catatan status
 
-- T3.5 belum: menunggu daftar situs prioritas dari pengguna. Situs lain sudah
+- T3.5 sebagian: Mitaku sudah ditambah (T6.1); sisanya menunggu daftar situs prioritas dari pengguna. Situs lain sudah
   ditangani oleh `GenericHtmlExtractor`.
 - T5.5 sebagian: diuji di emulator Android 17 (API 37) saja; Android 8 dan 12
   belum diuji.

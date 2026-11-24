@@ -456,12 +456,13 @@ class KvsExtractor extends SiteExtractor {
     'thisvid.com',
     'porntrex.com',
     'sunporno.com',
+    'rule34video.com',
   ];
 
   @override
   String? videoId(Uri u) {
     final segs = u.pathSegments.where((s) => s.isNotEmpty).toList();
-    if (u.host.endsWith('porntrex.com')) {
+    if (u.host.endsWith('porntrex.com') || u.host.endsWith('rule34video.com')) {
       final m = RegExp(r'^/video/(\d+)(?:/|$)').firstMatch(u.path);
       return m?.group(1);
     }
@@ -741,6 +742,59 @@ class HqpornerExtractor extends SiteExtractor {
       if (!seen.add(q)) continue;
       final url = Uri.parse(player).resolve(m.group(0)!).toString();
       links.add(DownloadLink(q, url, false, null, false, 'mp4', '$title.mp4'));
+    }
+    if (links.isEmpty) throw 'No download links on page';
+    return withSizes(links, http);
+  }
+}
+
+/// hentaicity: the video page lists an HLS master in `<source>` and a small
+/// `mobile.mp4` as JSON-LD `contentUrl`. Listing cards link through
+/// `/click/<n>/video/<slug>.html`, which redirects to `/video/<slug>.html`.
+class HentaicityExtractor extends SiteExtractor {
+  @override
+  String get id => 'hentaicity';
+
+  @override
+  List<String> get hosts => const ['hentaicity.com'];
+
+  @override
+  String? videoId(Uri u) {
+    final m = RegExp(r'^(?:/click/[^/]+)?/video/([^/]+)\.html$')
+        .firstMatch(u.path);
+    return m?.group(1);
+  }
+
+  @override
+  Future<List<DownloadLink>> resolve(VideoItem v, Http http) async {
+    final body = await http.getText(v.url);
+    final title = pageTitle(body, v.title);
+    final links = <DownloadLink>[];
+    final hls = RegExp(r'''<source[^>]+src=["']([^"']+\.m3u8[^"']*)["']''')
+        .firstMatch(body)
+        ?.group(1);
+    if (hls != null) {
+      try {
+        for (final l in await hlsLinks(hls.replaceAll('&amp;', '&'), http)) {
+          links.add(
+            DownloadLink(
+              l.quality,
+              l.url,
+              false,
+              null,
+              true,
+              l.ext,
+              '$title.${l.ext}',
+            ),
+          );
+        }
+      } catch (_) {}
+    }
+    final mp4 = RegExp(r'''contentUrl["']?\s*:\s*["']([^"']+\.mp4)["']''')
+        .firstMatch(body)
+        ?.group(1);
+    if (mp4 != null) {
+      links.add(DownloadLink(0, mp4, false, null, false, 'mp4', '$title.mp4'));
     }
     if (links.isEmpty) throw 'No download links on page';
     return withSizes(links, http);

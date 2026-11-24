@@ -432,4 +432,75 @@ var flashvars = {
     final top = await reg.classify('https://hqporner.com/top', FakeHttp());
     expect(top.kind, UrlKind.playlist);
   });
+
+  test('rule34video is kvs: /video/<id>/ with labelled qualities', () async {
+    const page = '''
+<html><head><meta property="og:title" content="Clip"></head><body><script>
+var flashvars = {
+ video_url: 'https://rule34video.com/get_file/1/a/1/2/2_360.mp4/',
+ video_url_text: '360p',
+ video_alt_url: 'https://rule34video.com/get_file/1/b/1/2/2_720p.mp4/',
+ video_alt_url_text: '720p'
+};</script></body></html>''';
+    final http = FakeHttp(
+      pages: {'https://rule34video.com/video/77/clip/': page},
+    );
+    final k = await reg.classify(
+      'https://rule34video.com/video/77/clip/',
+      http,
+    );
+    expect(k.extractor.id, 'kvs');
+    expect(k.kind, UrlKind.video);
+    final links = await k.extractor.resolve(
+      k.extractor.single(k.uri, http),
+      http,
+    );
+    expect(links.map((l) => l.quality), [360, 720]);
+    final top = await reg.classify('https://rule34video.com/', FakeHttp());
+    expect(top.kind, UrlKind.playlist);
+  });
+
+  test(
+    'hentaicity: hls master + contentUrl mp4; click links are videos',
+    () async {
+      const page = '''
+<html><head><title>Ep 1</title>
+<script type="application/ld+json">{"contentUrl": "https://www.hentaicity.com/flv/1/mobile.mp4"}</script></head>
+<body><video><source src="https://hls.x/m/master.m3u8?a=1&amp;b=2" type='application/x-mpegURL' /></video></body></html>''';
+      final http = FakeHttp(
+        pages: {
+          'https://www.hentaicity.com/video/ep-1-AbC.html': page,
+          'https://hls.x/m/master.m3u8?a=1&b=2': _master,
+        },
+        heads: {
+          'https://www.hentaicity.com/flv/1/mobile.mp4': _mp4(
+            'https://www.hentaicity.com/flv/1/mobile.mp4',
+            2097152,
+          ),
+        },
+      );
+      final k = await reg.classify(
+        'https://www.hentaicity.com/video/ep-1-AbC.html',
+        http,
+      );
+      expect(k.extractor.id, 'hentaicity');
+      expect(k.kind, UrlKind.video);
+      final links = await k.extractor.resolve(
+        k.extractor.single(k.uri, http),
+        http,
+      );
+      expect(links.where((l) => l.hls).map((l) => l.quality), [360, 720]);
+      expect(links.firstWhere((l) => !l.hls).mb, 2);
+      final c = await reg.classify(
+        'https://www.hentaicity.com/click/1-1/video/ep-1-AbC.html',
+        FakeHttp(),
+      );
+      expect(c.kind, UrlKind.video);
+      final l = await reg.classify(
+        'https://www.hentaicity.com/videos/straight/all-recent.html',
+        FakeHttp(),
+      );
+      expect(l.kind, UrlKind.playlist);
+    },
+  );
 }

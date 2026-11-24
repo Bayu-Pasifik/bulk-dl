@@ -41,7 +41,10 @@ void main() {
     );
     expect(n.kind, UrlKind.video);
     // "/videos/..." must not be mistaken for a video page.
-    final l = await reg.classify('https://www.xvideos.com/videos/x', FakeHttp());
+    final l = await reg.classify(
+      'https://www.xvideos.com/videos/x',
+      FakeHttp(),
+    );
     expect(l.kind, UrlKind.playlist);
   });
 
@@ -59,11 +62,20 @@ html5player.setVideoHLS('https://cdn.x/a/hls.m3u8');
         'https://cdn.x/a/hls.m3u8': _master,
       },
       heads: {
-        'https://cdn.x/a/mp4_sd.mp4?secure=1': _mp4('https://cdn.x/a/mp4_sd.mp4?secure=1', 10485760),
-        'https://cdn.x/a/mp4_hd.mp4?secure=2': _mp4('https://cdn.x/a/mp4_hd.mp4?secure=2', 20971520),
+        'https://cdn.x/a/mp4_sd.mp4?secure=1': _mp4(
+          'https://cdn.x/a/mp4_sd.mp4?secure=1',
+          10485760,
+        ),
+        'https://cdn.x/a/mp4_hd.mp4?secure=2': _mp4(
+          'https://cdn.x/a/mp4_hd.mp4?secure=2',
+          20971520,
+        ),
       },
     );
-    final k = await reg.classify('https://www.xvideos.com/video.abc/nice', http);
+    final k = await reg.classify(
+      'https://www.xvideos.com/video.abc/nice',
+      http,
+    );
     final item = k.extractor.single(k.uri, http);
     expect(item.id, 'abc');
     final links = await k.extractor.resolve(item, http);
@@ -82,10 +94,12 @@ html5player.setVideoHLS('https://cdn.x/a/hls.m3u8');
 <a href="/best/2" class="dir next">Next</a>''';
     const p2 = '''
 <div class="thumb-block"><a href="/video-cc3/third"><img src="https://t/3.jpg"></a></div>''';
-    final http = FakeHttp(pages: {
-      'https://www.xnxx.com/best': p1,
-      'https://www.xnxx.com/best/2': p2,
-    });
+    final http = FakeHttp(
+      pages: {
+        'https://www.xnxx.com/best': p1,
+        'https://www.xnxx.com/best/2': p2,
+      },
+    );
     final k = await reg.classify('https://www.xnxx.com/best', http);
     final items = await k.extractor.listPlaylist(k.uri, http);
     expect(items.map((i) => i.id), ['aa1', 'bb2', 'cc3']);
@@ -105,7 +119,10 @@ html5player.setVideoHLS('https://cdn.x/a/hls.m3u8');
     expect(l.kind, UrlKind.playlist);
     final r = await reg.classify('https://www.redtube.com/123456', FakeHttp());
     expect(r.kind, UrlKind.video);
-    final y = await reg.classify('https://www.youporn.com/watch/99/slug/', FakeHttp());
+    final y = await reg.classify(
+      'https://www.youporn.com/watch/99/slug/',
+      FakeHttp(),
+    );
     expect(y.kind, UrlKind.video);
   });
 
@@ -127,7 +144,10 @@ var flashvars_1 = {"video_title":"x","mediaDefinitions":[
         'https://www.pornhub.com/video/get_media?s=zz': media,
       },
       heads: {
-        'https://cdn.p/v720.mp4?t=1': _mp4('https://cdn.p/v720.mp4?t=1', 5242880),
+        'https://cdn.p/v720.mp4?t=1': _mp4(
+          'https://cdn.p/v720.mp4?t=1',
+          5242880,
+        ),
       },
     );
     final k = await reg.classify(
@@ -137,18 +157,18 @@ var flashvars_1 = {"video_title":"x","mediaDefinitions":[
     final item = k.extractor.single(k.uri, http);
     expect(item.id, 'ph1');
     final links = await k.extractor.resolve(item, http);
-    expect(
-      links.where((l) => !l.hls).map((l) => l.quality).toSet(),
-      {720, 480},
-    );
+    expect(links.where((l) => !l.hls).map((l) => l.quality).toSet(), {
+      720,
+      480,
+    });
     expect(links.where((l) => l.hls).map((l) => l.quality), [360, 720]);
     expect(links.firstWhere((l) => l.quality == 720 && !l.hls).mb, 5);
   });
 
   test('unrelated host still falls through to generic', () async {
-    final http = FakeHttp(pages: {
-      'https://example.org/p': '<video src="/a.mp4"></video>',
-    });
+    final http = FakeHttp(
+      pages: {'https://example.org/p': '<video src="/a.mp4"></video>'},
+    );
     final k = await reg.classify('https://example.org/p', http);
     expect(k.extractor.id, isNot('xvideos'));
     expect(k.extractor.id, isNot('mediadef'));

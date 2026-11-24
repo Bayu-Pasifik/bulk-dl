@@ -22,4 +22,3 @@ class FakeHttp implements Http {
     return h;
   }
 }
-

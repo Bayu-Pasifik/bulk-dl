@@ -35,7 +35,10 @@ Uint8List encrypt(Uint8List data, Uint8List key, Uint8List iv) {
   final c = PaddedBlockCipherImpl(PKCS7Padding(), CBCBlockCipher(AESEngine()))
     ..init(
       true,
-      PaddedBlockCipherParameters(ParametersWithIV(KeyParameter(key), iv), null),
+      PaddedBlockCipherParameters(
+        ParametersWithIV(KeyParameter(key), iv),
+        null,
+      ),
     );
   return c.process(data);
 }
@@ -53,7 +56,13 @@ low.m3u8
       expect(v.map((e) => e.height), [360, 720]);
       expect(v[0].url, 'https://h.test/a/low.m3u8');
       expect(v[1].url, 'https://h.test/abs/hi.m3u8');
-      expect(parseMaster('#EXTM3U\n#EXTINF:4,\nx.ts\n', Uri.parse('https://h.test/')), isEmpty);
+      expect(
+        parseMaster(
+          '#EXTM3U\n#EXTINF:4,\nx.ts\n',
+          Uri.parse('https://h.test/'),
+        ),
+        isEmpty,
+      );
     });
 
     test('media playlist: sequence, key, iv, map', () {
@@ -76,15 +85,21 @@ b.m4s
     });
 
     test('SAMPLE-AES / non-identity key is DRM and rejected', () {
-      const m = '#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI="skd://x",KEYFORMAT="com.apple.streamingkeydelivery"\n#EXTINF:4,\na.ts\n';
-      expect(() => parseMedia(m, Uri.parse('https://h.test/p.m3u8')), throwsA(isA<HlsException>()));
+      const m =
+          '#EXTM3U\n#EXT-X-KEY:METHOD=SAMPLE-AES,URI="skd://x",KEYFORMAT="com.apple.streamingkeydelivery"\n#EXTINF:4,\na.ts\n';
+      expect(
+        () => parseMedia(m, Uri.parse('https://h.test/p.m3u8')),
+        throwsA(isA<HlsException>()),
+      );
     });
 
     test('hlsLinks: one link per variant, or one for a media list', () async {
-      final http = FakeHttp(pages: {
-        'https://h.test/m.m3u8': '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1,RESOLUTION=640x360\na.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=2,RESOLUTION=1280x720\nb.m3u8\n',
-        'https://h.test/p.m3u8': '#EXTM3U\n#EXTINF:4,\na.ts\n',
-      });
+      final http = FakeHttp(
+        pages: {
+          'https://h.test/m.m3u8': '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1,RESOLUTION=640x360\na.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=2,RESOLUTION=1280x720\nb.m3u8\n',
+          'https://h.test/p.m3u8': '#EXTM3U\n#EXTINF:4,\na.ts\n',
+        },
+      );
       final l = await hlsLinks('https://h.test/m.m3u8', http);
       expect(l.map((e) => e.quality), [360, 720]);
       expect(l.every((e) => e.hls), isTrue);
@@ -103,7 +118,8 @@ b.m4s
       final dio = Dio()
         ..httpClientAdapter = BytesAdapter({
           'https://h.test/p.m3u8': Uint8List.fromList(
-            '#EXTM3U\n#EXTINF:4,\n1.ts\n#EXTINF:4,\n2.ts\n#EXTINF:4,\n3.ts\n#EXTINF:4,\n4.ts\n'.codeUnits,
+            '#EXTM3U\n#EXTINF:4,\n1.ts\n#EXTINF:4,\n2.ts\n#EXTINF:4,\n3.ts\n#EXTINF:4,\n4.ts\n'
+                .codeUnits,
           ),
           'https://h.test/1.ts': Uint8List.fromList([1, 1]),
           'https://h.test/2.ts': Uint8List.fromList([2, 2]),
@@ -131,7 +147,8 @@ b.m4s
       final dio = Dio()
         ..httpClientAdapter = BytesAdapter({
           'https://h.test/p.m3u8': Uint8List.fromList(
-            '#EXTM3U\n#EXT-X-MAP:URI="init.mp4"\n#EXT-X-KEY:METHOD=AES-128,URI="k.bin",IV=0x$ivHex\n#EXTINF:4,\ns.m4s\n'.codeUnits,
+            '#EXTM3U\n#EXT-X-MAP:URI="init.mp4"\n#EXT-X-KEY:METHOD=AES-128,URI="k.bin",IV=0x$ivHex\n#EXTINF:4,\ns.m4s\n'
+                .codeUnits,
           ),
           'https://h.test/init.mp4': Uint8List.fromList([9, 9]),
           'https://h.test/k.bin': key,
@@ -146,12 +163,19 @@ b.m4s
     test('cancel stops the download', () async {
       final dio = Dio()
         ..httpClientAdapter = BytesAdapter({
-          'https://h.test/p.m3u8': Uint8List.fromList('#EXTM3U\n#EXTINF:4,\n1.ts\n'.codeUnits),
+          'https://h.test/p.m3u8': Uint8List.fromList(
+            '#EXTM3U\n#EXTINF:4,\n1.ts\n'.codeUnits,
+          ),
           'https://h.test/1.ts': Uint8List.fromList([1]),
         });
       final token = CancelToken()..cancel('x');
       expect(
-        () => downloadHls(dio, 'https://h.test/p.m3u8', File('${tmp.path}/o'), token: token),
+        () => downloadHls(
+          dio,
+          'https://h.test/p.m3u8',
+          File('${tmp.path}/o'),
+          token: token,
+        ),
         throwsA(isA<DioException>()),
       );
     });
@@ -167,46 +191,67 @@ b.m4s
 
     Map<String, HeadInfo> heads() => {
       'https://s.test/page': html('https://s.test/page'),
-      'https://cdn.test/og.mp4': HeadInfo(url: 'https://cdn.test/og.mp4', type: 'video/mp4', length: 5 * 1048576),
-      'https://s.test/v/720.mp4': HeadInfo(url: 'https://s.test/v/720.mp4', type: 'video/mp4', length: 40 * 1048576),
-      'https://s.test/v/prev.mp4': HeadInfo(url: 'https://s.test/v/prev.mp4', type: 'video/mp4', length: 20 * 1024),
+      'https://cdn.test/og.mp4': HeadInfo(
+        url: 'https://cdn.test/og.mp4',
+        type: 'video/mp4',
+        length: 5 * 1048576,
+      ),
+      'https://s.test/v/720.mp4': HeadInfo(
+        url: 'https://s.test/v/720.mp4',
+        type: 'video/mp4',
+        length: 40 * 1048576,
+      ),
+      'https://s.test/v/prev.mp4': HeadInfo(
+        url: 'https://s.test/v/prev.mp4',
+        type: 'video/mp4',
+        length: 20 * 1024,
+      ),
     };
 
     test('classifies a page with media as video', () async {
-      final http = FakeHttp(pages: {'https://s.test/page': page}, heads: heads());
+      final http = FakeHttp(
+        pages: {'https://s.test/page': page},
+        heads: heads(),
+      );
       final c = await reg.classify('https://s.test/page', http);
       expect(c.kind, UrlKind.video);
       expect(c.extractor.id, 'generic');
     });
 
-    test('resolve collects sources, drops tiny previews, titles the file', () async {
-      final http = FakeHttp(
-        pages: {
-          'https://s.test/page': page,
-          'https://cdn.test/s/index.m3u8': '#EXTM3U\n#EXTINF:4,\na.ts\n',
-        },
-        heads: heads(),
-      );
-      final ex = reg.byId('generic');
-      final v = ex.single(Uri.parse('https://s.test/page'), http);
-      final l = await ex.resolve(v, http);
-      final urls = l.map((e) => e.url).toList();
-      expect(urls, contains('https://s.test/v/720.mp4'));
-      expect(urls, contains('https://cdn.test/og.mp4'));
-      expect(urls, contains('https://cdn.test/s/index.m3u8'));
-      expect(urls, isNot(contains('https://s.test/v/prev.mp4')));
-      final best = l.firstWhere((e) => e.url.endsWith('720.mp4'));
-      expect(best.quality, 720);
-      expect(best.fileName, 'My Page.mp4');
-      expect(l.firstWhere((e) => e.hls).ext, 'ts');
-    });
+    test(
+      'resolve collects sources, drops tiny previews, titles the file',
+      () async {
+        final http = FakeHttp(
+          pages: {
+            'https://s.test/page': page,
+            'https://cdn.test/s/index.m3u8': '#EXTM3U\n#EXTINF:4,\na.ts\n',
+          },
+          heads: heads(),
+        );
+        final ex = reg.byId('generic');
+        final v = ex.single(Uri.parse('https://s.test/page'), http);
+        final l = await ex.resolve(v, http);
+        final urls = l.map((e) => e.url).toList();
+        expect(urls, contains('https://s.test/v/720.mp4'));
+        expect(urls, contains('https://cdn.test/og.mp4'));
+        expect(urls, contains('https://cdn.test/s/index.m3u8'));
+        expect(urls, isNot(contains('https://s.test/v/prev.mp4')));
+        final best = l.firstWhere((e) => e.url.endsWith('720.mp4'));
+        expect(best.quality, 720);
+        expect(best.fileName, 'My Page.mp4');
+        expect(l.firstWhere((e) => e.hls).ext, 'ts');
+      },
+    );
 
     test('page without media or cards is not recognised', () async {
       final http = FakeHttp(
         pages: {'https://s.test/x': '<html><a href="/a">a</a></html>'},
         heads: {'https://s.test/x': html('https://s.test/x')},
       );
-      expect(() => reg.classify('https://s.test/x', http), throwsA(isA<String>()));
+      expect(
+        () => reg.classify('https://s.test/x', http),
+        throwsA(isA<String>()),
+      );
     });
 
     test('card grid is a playlist; next link is followed', () async {
@@ -222,7 +267,12 @@ b.m4s
       final c = await reg.classify('https://s.test/list', http);
       expect(c.kind, UrlKind.playlist);
       final items = await c.extractor.listPlaylist(c.uri, http);
-      expect(items.map((e) => e.title), ['Item 1', 'Item 2', 'Item 3', 'Item 4']);
+      expect(items.map((e) => e.title), [
+        'Item 1',
+        'Item 2',
+        'Item 3',
+        'Item 4',
+      ]);
       expect(items.first.url, 'https://s.test/w/1');
       expect(items.first.thumb, 'https://s.test/t/1.jpg');
       expect(items.first.extractor, 'generic');

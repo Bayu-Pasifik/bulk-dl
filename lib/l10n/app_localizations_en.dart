@@ -323,4 +323,92 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cookieLabel => 'Cookie';
+
+  @override
+  String get settingsProxy => 'Proxy';
+
+  @override
+  String get proxyOff => 'Off';
+
+  @override
+  String get proxyUse => 'Use proxy';
+
+  @override
+  String get proxyType => 'Type';
+
+  @override
+  String get proxyHost => 'Host';
+
+  @override
+  String get proxyPort => 'Port';
+
+  @override
+  String get proxyUser => 'Username (optional)';
+
+  @override
+  String get proxyPass => 'Password (optional)';
+
+  @override
+  String get proxyPaste => 'Or paste a link, e.g. socks5://user:pass@host:1080';
+
+  @override
+  String get proxyBadLink => 'Not a valid proxy link';
+
+  @override
+  String get proxyHelp =>
+      'All downloads and page loads go through this proxy. SOCKS5 also resolves names on the proxy, which bypasses DNS blocks.';
+
+  @override
+  String get proxyTesting => 'Testing...';
+
+  @override
+  String proxyTestOk(String ip) {
+    return 'Works. Exit IP: $ip';
+  }
+
+  @override
+  String proxyTestFail(String error) {
+    return 'Failed: $error';
+  }
+
+  @override
+  String get settingsVpn => 'VPN (WireGuard)';
+
+  @override
+  String get vpnConnected => 'Connected';
+
+  @override
+  String get vpnDisconnected => 'Not connected';
+
+  @override
+  String get vpnNoConfig => 'No config imported';
+
+  @override
+  String get vpnHelp =>
+      'Routes this device\'s traffic through a WireGuard server. Paste a .conf from your VPN provider or your own server. The config, including its private key, is stored only on this device.';
+
+  @override
+  String get vpnConfigLabel => 'WireGuard config';
+
+  @override
+  String get vpnConnect => 'Connect';
+
+  @override
+  String get vpnDisconnect => 'Disconnect';
+
+  @override
+  String get vpnAuto => 'Connect when the app starts';
+
+  @override
+  String vpnInvalid(String error) {
+    return 'Invalid config: $error';
+  }
+
+  @override
+  String vpnFailed(String error) {
+    return 'VPN failed: $error';
+  }
+
+  @override
+  String get vpnImport => 'Paste from clipboard';
 }

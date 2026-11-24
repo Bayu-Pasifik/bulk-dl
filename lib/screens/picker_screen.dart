@@ -65,7 +65,9 @@ class PickerScreen extends StatelessWidget {
                     const Spacer(),
                     Text(
                       s.pickerSelected(app.selected.length),
-                      style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
+                      style: tt.labelLarge?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -149,9 +151,13 @@ class _Row extends StatelessWidget {
                                 size: 16,
                                 color: cs.onPrimaryContainer,
                               ),
-                              label: Text(AppLocalizations.of(context).alreadyDownloaded),
+                              label: Text(
+                                AppLocalizations.of(context).alreadyDownloaded,
+                              ),
                               backgroundColor: cs.primaryContainer,
-                              labelStyle: TextStyle(color: cs.onPrimaryContainer),
+                              labelStyle: TextStyle(
+                                color: cs.onPrimaryContainer,
+                              ),
                               visualDensity: VisualDensity.compact,
                               padding: EdgeInsets.zero,
                             ),

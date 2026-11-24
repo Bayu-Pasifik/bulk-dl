@@ -12,6 +12,8 @@ import 'hls.dart';
 import 'library.dart';
 import 'net/dns.dart';
 import 'net/errors.dart';
+import 'net/proxy.dart';
+import 'net/vpn.dart';
 import 'naming.dart';
 import 'scraper.dart';
 
@@ -145,8 +147,69 @@ class DownloadQueue extends ChangeNotifier {
         orElse: () => DnsResolver.instance.mode,
       );
       DnsResolver.instance.custom = p.getString('s_dns_custom') ?? '';
+      final pj = p.getString('s_proxy');
+      if (pj != null) {
+        ProxySettings.instance.config = ProxyConfig.fromJson(
+          jsonDecode(pj) as Map<String, dynamic>,
+        );
+      }
+      wgConfig = p.getString('s_wg') ?? '';
+      wgAutoConnect = p.getBool('s_wg_auto') ?? false;
+      vpnUp = await Vpn.instance.isUp();
       notifyListeners();
     } catch (_) {}
+  }
+
+  ProxyConfig get proxy => ProxySettings.instance.config;
+
+  Future<void> setProxy(ProxyConfig c) async {
+    ProxySettings.instance.config = c;
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString('s_proxy', jsonEncode(c.toJson()));
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  // --- in-app WireGuard VPN ---------------------------------------------
+  String wgConfig = '';
+  bool wgAutoConnect = false;
+  bool vpnUp = false;
+  bool vpnBusy = false;
+  String? vpnError;
+
+  Future<void> setWgConfig(String text, {bool? auto}) async {
+    wgConfig = text.trim();
+    if (auto != null) wgAutoConnect = auto;
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString('s_wg', wgConfig);
+      await p.setBool('s_wg_auto', wgAutoConnect);
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  Future<void> setVpn(bool on) async {
+    if (vpnBusy) return;
+    vpnBusy = true;
+    vpnError = null;
+    notifyListeners();
+    try {
+      if (on) {
+        final c = checkWgConfig(wgConfig);
+        if (!c.ok) throw c.error!;
+        await Vpn.instance.up(wgConfig);
+      } else {
+        await Vpn.instance.down();
+      }
+      vpnUp = await Vpn.instance.isUp();
+      DnsResolver.instance.clearCache();
+    } catch (e) {
+      vpnError = e.toString();
+      vpnUp = await Vpn.instance.isUp();
+    }
+    vpnBusy = false;
+    notifyListeners();
   }
 
   DnsMode get dnsMode => DnsResolver.instance.mode;

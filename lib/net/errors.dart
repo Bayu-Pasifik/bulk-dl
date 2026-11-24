@@ -40,8 +40,7 @@ String friendlyError(Object e) {
     }
   }
   if (e is TimeoutException) return 'Connection timed out';
-  if (e is SocketException &&
-      e.message.contains('Failed host lookup')) {
+  if (e is SocketException && e.message.contains('Failed host lookup')) {
     return 'Cannot resolve host (DNS failed or blocked)';
   }
   if (_looksBlocked(e)) return _blockHint;

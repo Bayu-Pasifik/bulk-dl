@@ -156,10 +156,8 @@ Future<List<DownloadLink>> hlsLinks(String url, Http http) async {
 }
 
 Uint8List _decrypt(Uint8List data, Uint8List key, Uint8List iv) {
-  final c = PaddedBlockCipherImpl(
-    PKCS7Padding(),
-    CBCBlockCipher(AESEngine()),
-  )..init(
+  final c = PaddedBlockCipherImpl(PKCS7Padding(), CBCBlockCipher(AESEngine()))
+    ..init(
       false,
       PaddedBlockCipherParameters(
         ParametersWithIV(KeyParameter(key), iv),

@@ -82,7 +82,9 @@ class HomeScreen extends StatelessWidget {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.download),
-                  label: Text(app.loading ? s.processing : s.analyzeAndDownload),
+                  label: Text(
+                    app.loading ? s.processing : s.analyzeAndDownload,
+                  ),
                 ),
                 if (app.message != null) ...[
                   const SizedBox(height: 12),
@@ -129,15 +131,21 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 Row(
                   children: [
-                    Expanded(
-                      child: Text(s.maxQuality, style: tt.titleMedium),
-                    ),
+                    Expanded(child: Text(s.maxQuality, style: tt.titleMedium)),
                     DropdownMenu<int>(
                       initialSelection: app.queue.maxQuality,
                       width: 140,
                       requestFocusOnTap: false,
                       dropdownMenuEntries: [
-                        for (final q in const [240, 360, 480, 720, 1080, 1440, 2160])
+                        for (final q in const [
+                          240,
+                          360,
+                          480,
+                          720,
+                          1080,
+                          1440,
+                          2160,
+                        ])
                           DropdownMenuEntry(value: q, label: '${q}p'),
                       ],
                       onSelected: (q) {
@@ -153,7 +161,9 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      Expanded(child: Text(s.recentTitle, style: tt.titleMedium)),
+                      Expanded(
+                        child: Text(s.recentTitle, style: tt.titleMedium),
+                      ),
                       TextButton(
                         onPressed: app.clearRecent,
                         child: Text(s.delete),
@@ -164,7 +174,11 @@ class HomeScreen extends StatelessWidget {
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.history),
-                      title: Text(u, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      title: Text(
+                        u,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       onTap: () {
                         app.urlCtl.text = u;
                         app.refresh();

@@ -111,11 +111,15 @@ String? nameFromDisposition(String? cd) {
       return Uri.decodeComponent(star.group(1)!.trim());
     } catch (_) {}
   }
-  final q = RegExp(r'filename\s*=\s*"([^"]+)"', caseSensitive: false)
-      .firstMatch(cd);
+  final q = RegExp(
+    r'filename\s*=\s*"([^"]+)"',
+    caseSensitive: false,
+  ).firstMatch(cd);
   if (q != null) return q.group(1)!.trim();
-  final p = RegExp(r'filename\s*=\s*([^;]+)', caseSensitive: false)
-      .firstMatch(cd);
+  final p = RegExp(
+    r'filename\s*=\s*([^;]+)',
+    caseSensitive: false,
+  ).firstMatch(cd);
   return p?.group(1)!.trim();
 }
 

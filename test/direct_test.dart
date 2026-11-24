@@ -24,8 +24,14 @@ void main() {
 
     test('Content-Disposition parsing', () {
       expect(nameFromDisposition('attachment; filename="A B.mp4"'), 'A B.mp4');
-      expect(nameFromDisposition("attachment; filename*=UTF-8''A%20B.mp4"), 'A B.mp4');
-      expect(nameFromDisposition('attachment; filename=plain.zip'), 'plain.zip');
+      expect(
+        nameFromDisposition("attachment; filename*=UTF-8''A%20B.mp4"),
+        'A B.mp4',
+      );
+      expect(
+        nameFromDisposition('attachment; filename=plain.zip'),
+        'plain.zip',
+      );
       expect(nameFromDisposition(null), isNull);
     });
 
@@ -52,7 +58,10 @@ void main() {
     final reg = Registry();
 
     test('rejects non-http links', () {
-      expect(() => reg.classify('ftp://x/y', FakeHttp()), throwsA(isA<String>()));
+      expect(
+        () => reg.classify('ftp://x/y', FakeHttp()),
+        throwsA(isA<String>()),
+      );
       expect(() => reg.classify('hello', FakeHttp()), throwsA(isA<String>()));
     });
 
@@ -66,7 +75,12 @@ void main() {
 
     test('octet-stream via HEAD is a file', () async {
       final http = FakeHttp(
-        heads: {'https://h.test/dl?id=7': HeadInfo(url: 'https://h.test/dl?id=7', type: 'application/octet-stream')},
+        heads: {
+          'https://h.test/dl?id=7': HeadInfo(
+            url: 'https://h.test/dl?id=7',
+            type: 'application/octet-stream',
+          ),
+        },
       );
       final c = await reg.classify('https://h.test/dl?id=7', http);
       expect(c.kind, UrlKind.file);
@@ -74,7 +88,12 @@ void main() {
 
     test('html page falls through to site extractors', () async {
       final http = FakeHttp(
-        heads: {'https://h.test/p/': HeadInfo(url: 'https://h.test/p/', type: 'text/html')},
+        heads: {
+          'https://h.test/p/': HeadInfo(
+            url: 'https://h.test/p/',
+            type: 'text/html',
+          ),
+        },
         pages: {'https://h.test/p/': '<a href="/video-a/x/">x</a>'},
       );
       final c = await reg.classify('https://h.test/p/', http);
@@ -84,10 +103,18 @@ void main() {
 
     test('nothing recognisable throws', () async {
       final http = FakeHttp(
-        heads: {'https://h.test/p/': HeadInfo(url: 'https://h.test/p/', type: 'text/html')},
+        heads: {
+          'https://h.test/p/': HeadInfo(
+            url: 'https://h.test/p/',
+            type: 'text/html',
+          ),
+        },
         pages: {'https://h.test/p/': '<html>hi</html>'},
       );
-      expect(() => reg.classify('https://h.test/p/', http), throwsA(isA<String>()));
+      expect(
+        () => reg.classify('https://h.test/p/', http),
+        throwsA(isA<String>()),
+      );
     });
   });
 
@@ -128,8 +155,14 @@ void main() {
       final ex = reg.byId('direct');
       final http = FakeHttp(
         heads: {
-          'https://h.test/page': HeadInfo(url: 'https://h.test/page', type: 'text/html'),
-          'https://h.test/blob': HeadInfo(url: 'https://h.test/blob', type: 'application/pdf'),
+          'https://h.test/page': HeadInfo(
+            url: 'https://h.test/page',
+            type: 'text/html',
+          ),
+          'https://h.test/blob': HeadInfo(
+            url: 'https://h.test/blob',
+            type: 'application/pdf',
+          ),
         },
       );
       final p = ex.single(Uri.parse('https://h.test/page'), http);

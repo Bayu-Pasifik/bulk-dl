@@ -1,9 +1,16 @@
+import 'package:dio/dio.dart' show Options, ResponseType;
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../app_scope.dart';
 import '../l10n/app_localizations.dart';
 import '../net/dns.dart';
 import '../net/errors.dart';
+import '../net/http_factory.dart';
+import '../net/proxy.dart';
+import '../net/vpn.dart';
+
+part 'network_dialogs.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -33,7 +40,15 @@ class SettingsScreen extends StatelessWidget {
                   width: 130,
                   requestFocusOnTap: false,
                   dropdownMenuEntries: [
-                    for (final v in const [240, 360, 480, 720, 1080, 1440, 2160])
+                    for (final v in const [
+                      240,
+                      360,
+                      480,
+                      720,
+                      1080,
+                      1440,
+                      2160,
+                    ])
                       DropdownMenuEntry(value: v, label: '${v}p'),
                   ],
                   onSelected: (v) {
@@ -101,6 +116,33 @@ class SettingsScreen extends StatelessWidget {
                 onTap: () => _dnsDialog(context),
               ),
               ListTile(
+                leading: const Icon(Icons.swap_horiz),
+                title: Text(s.settingsProxy),
+                subtitle: Text(
+                  q.proxy.usable
+                      ? '${q.proxy.type == ProxyType.socks5 ? "SOCKS5" : "HTTP"} '
+                            '${q.proxy.host}:${q.proxy.port}'
+                      : s.proxyOff,
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _proxyDialog(context),
+              ),
+              ListTile(
+                leading: Icon(
+                  q.vpnUp ? Icons.vpn_lock : Icons.vpn_key_outlined,
+                ),
+                title: Text(s.settingsVpn),
+                subtitle: Text(
+                  q.vpnUp
+                      ? s.vpnConnected
+                      : (q.wgConfig.isEmpty
+                            ? s.vpnNoConfig
+                            : s.vpnDisconnected),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _vpnDialog(context),
+              ),
+              ListTile(
                 leading: const Icon(Icons.cookie_outlined),
                 title: Text(s.settingsCookies),
                 subtitle: Text(
@@ -119,9 +161,18 @@ class SettingsScreen extends StatelessWidget {
                   child: SegmentedButton<ThemeMode>(
                     showSelectedIcon: false,
                     segments: [
-                      ButtonSegment(value: ThemeMode.system, label: Text(s.themeSystem)),
-                      ButtonSegment(value: ThemeMode.light, label: Text(s.themeLight)),
-                      ButtonSegment(value: ThemeMode.dark, label: Text(s.themeDark)),
+                      ButtonSegment(
+                        value: ThemeMode.system,
+                        label: Text(s.themeSystem),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.light,
+                        label: Text(s.themeLight),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.dark,
+                        label: Text(s.themeDark),
+                      ),
                     ],
                     selected: {app.themeMode},
                     onSelectionChanged: (s) => app.setThemeMode(s.first),
@@ -147,9 +198,8 @@ class SettingsScreen extends StatelessWidget {
                       ButtonSegment(value: 'id', label: Text(s.langIndonesian)),
                     ],
                     selected: {app.locale?.languageCode ?? ''},
-                    onSelectionChanged: (v) => app.setLocale(
-                      v.first.isEmpty ? null : Locale(v.first),
-                    ),
+                    onSelectionChanged: (v) =>
+                        app.setLocale(v.first.isEmpty ? null : Locale(v.first)),
                   ),
                 ),
               ),
@@ -185,10 +235,7 @@ Future<void> _dnsDialog(BuildContext context) async {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                s.dnsHelp,
-                style: Theme.of(ctx).textTheme.bodySmall,
-              ),
+              Text(s.dnsHelp, style: Theme.of(ctx).textTheme.bodySmall),
               const SizedBox(height: 8),
               RadioGroup<DnsMode>(
                 groupValue: mode,
@@ -235,7 +282,10 @@ Future<void> _dnsDialog(BuildContext context) async {
                       ..custom = ctl.text.trim();
                     try {
                       final ips = await r.resolve('example.com');
-                      result = s.dnsOk(r.lastProvider ?? '', ips.first.toString());
+                      result = s.dnsOk(
+                        r.lastProvider ?? '',
+                        ips.first.toString(),
+                      );
                     } catch (e) {
                       result = s.dnsFailed(friendlyError(e));
                     }
@@ -278,10 +328,7 @@ Future<void> _cookieDialog(BuildContext context) async {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                s.cookieHelp,
-                style: Theme.of(ctx).textTheme.bodySmall,
-              ),
+              Text(s.cookieHelp, style: Theme.of(ctx).textTheme.bodySmall),
               const SizedBox(height: 12),
               TextField(
                 controller: host,

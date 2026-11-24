@@ -30,8 +30,26 @@ class MainActivity : FlutterActivity() {
         sharedText(intent)?.let { channel?.invokeMethod("shared", it) }
     }
 
+    private var vpn: VpnBridge? = null
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (vpn?.onActivityResult(requestCode, resultCode) == true) return
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        val bridge = VpnBridge(this)
+        vpn = bridge
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bulk_dl/vpn")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "up" -> bridge.up(call.argument<String>("config")!!, result)
+                    "down" -> bridge.down(result)
+                    "isUp" -> result.success(bridge.isUp())
+                    else -> result.notImplemented()
+                }
+            }
         channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "bulk_dl/files")
         channel!!.setMethodCallHandler { call, result ->
                 when (call.method) {

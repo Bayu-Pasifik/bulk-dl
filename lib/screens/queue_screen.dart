@@ -30,7 +30,10 @@ class QueueScreen extends StatelessWidget {
                       if (v == 'clear') q.clearFinished();
                     },
                     itemBuilder: (_) => [
-                      PopupMenuItem(value: 'clear', child: Text(s.queueClearFinished)),
+                      PopupMenuItem(
+                        value: 'clear',
+                        child: Text(s.queueClearFinished),
+                      ),
                     ],
                   ),
                 ],

@@ -323,4 +323,93 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get cookieLabel => 'Cookie';
+
+  @override
+  String get settingsProxy => 'Proxy';
+
+  @override
+  String get proxyOff => 'Mati';
+
+  @override
+  String get proxyUse => 'Pakai proxy';
+
+  @override
+  String get proxyType => 'Jenis';
+
+  @override
+  String get proxyHost => 'Host';
+
+  @override
+  String get proxyPort => 'Port';
+
+  @override
+  String get proxyUser => 'Username (opsional)';
+
+  @override
+  String get proxyPass => 'Password (opsional)';
+
+  @override
+  String get proxyPaste =>
+      'Atau tempel link, mis. socks5://user:pass@host:1080';
+
+  @override
+  String get proxyBadLink => 'Link proxy tidak valid';
+
+  @override
+  String get proxyHelp =>
+      'Semua unduhan dan pemuatan halaman lewat proxy ini. SOCKS5 juga me-resolve nama di proxy, jadi memintas blokir DNS.';
+
+  @override
+  String get proxyTesting => 'Menguji...';
+
+  @override
+  String proxyTestOk(String ip) {
+    return 'Berhasil. IP keluar: $ip';
+  }
+
+  @override
+  String proxyTestFail(String error) {
+    return 'Gagal: $error';
+  }
+
+  @override
+  String get settingsVpn => 'VPN (WireGuard)';
+
+  @override
+  String get vpnConnected => 'Terhubung';
+
+  @override
+  String get vpnDisconnected => 'Tidak terhubung';
+
+  @override
+  String get vpnNoConfig => 'Belum ada config';
+
+  @override
+  String get vpnHelp =>
+      'Mengarahkan lalu lintas perangkat ini lewat server WireGuard. Tempel file .conf dari penyedia VPN atau server kamu sendiri. Config, termasuk private key, disimpan hanya di perangkat ini.';
+
+  @override
+  String get vpnConfigLabel => 'Config WireGuard';
+
+  @override
+  String get vpnConnect => 'Hubungkan';
+
+  @override
+  String get vpnDisconnect => 'Putuskan';
+
+  @override
+  String get vpnAuto => 'Hubungkan saat app dibuka';
+
+  @override
+  String vpnInvalid(String error) {
+    return 'Config tidak valid: $error';
+  }
+
+  @override
+  String vpnFailed(String error) {
+    return 'VPN gagal: $error';
+  }
+
+  @override
+  String get vpnImport => 'Tempel dari clipboard';
 }

@@ -649,6 +649,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cookie'**
   String get cookieLabel;
+
+  /// No description provided for @settingsProxy.
+  ///
+  /// In en, this message translates to:
+  /// **'Proxy'**
+  String get settingsProxy;
+
+  /// No description provided for @proxyOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get proxyOff;
+
+  /// No description provided for @proxyUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use proxy'**
+  String get proxyUse;
+
+  /// No description provided for @proxyType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get proxyType;
+
+  /// No description provided for @proxyHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get proxyHost;
+
+  /// No description provided for @proxyPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get proxyPort;
+
+  /// No description provided for @proxyUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Username (optional)'**
+  String get proxyUser;
+
+  /// No description provided for @proxyPass.
+  ///
+  /// In en, this message translates to:
+  /// **'Password (optional)'**
+  String get proxyPass;
+
+  /// No description provided for @proxyPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Or paste a link, e.g. socks5://user:pass@host:1080'**
+  String get proxyPaste;
+
+  /// No description provided for @proxyBadLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a valid proxy link'**
+  String get proxyBadLink;
+
+  /// No description provided for @proxyHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'All downloads and page loads go through this proxy. SOCKS5 also resolves names on the proxy, which bypasses DNS blocks.'**
+  String get proxyHelp;
+
+  /// No description provided for @proxyTesting.
+  ///
+  /// In en, this message translates to:
+  /// **'Testing...'**
+  String get proxyTesting;
+
+  /// No description provided for @proxyTestOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Works. Exit IP: {ip}'**
+  String proxyTestOk(String ip);
+
+  /// No description provided for @proxyTestFail.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed: {error}'**
+  String proxyTestFail(String error);
+
+  /// No description provided for @settingsVpn.
+  ///
+  /// In en, this message translates to:
+  /// **'VPN (WireGuard)'**
+  String get settingsVpn;
+
+  /// No description provided for @vpnConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get vpnConnected;
+
+  /// No description provided for @vpnDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not connected'**
+  String get vpnDisconnected;
+
+  /// No description provided for @vpnNoConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'No config imported'**
+  String get vpnNoConfig;
+
+  /// No description provided for @vpnHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Routes this device\'s traffic through a WireGuard server. Paste a .conf from your VPN provider or your own server. The config, including its private key, is stored only on this device.'**
+  String get vpnHelp;
+
+  /// No description provided for @vpnConfigLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'WireGuard config'**
+  String get vpnConfigLabel;
+
+  /// No description provided for @vpnConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get vpnConnect;
+
+  /// No description provided for @vpnDisconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get vpnDisconnect;
+
+  /// No description provided for @vpnAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect when the app starts'**
+  String get vpnAuto;
+
+  /// No description provided for @vpnInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid config: {error}'**
+  String vpnInvalid(String error);
+
+  /// No description provided for @vpnFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'VPN failed: {error}'**
+  String vpnFailed(String error);
+
+  /// No description provided for @vpnImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste from clipboard'**
+  String get vpnImport;
 }
 
 class _AppLocalizationsDelegate

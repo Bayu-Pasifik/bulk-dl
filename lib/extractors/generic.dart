@@ -15,11 +15,13 @@ class _Src {
   _Src(this.url, this.quality);
   final String url;
   final int quality;
-  bool get hls => Uri.tryParse(url)?.path.toLowerCase().endsWith('.m3u8') ?? false;
+  bool get hls =>
+      Uri.tryParse(url)?.path.toLowerCase().endsWith('.m3u8') ?? false;
 }
 
 int _qualityOf(String s) {
-  final m = RegExp(r'(\d{3,4})\s*p\b', caseSensitive: false).firstMatch(s) ??
+  final m =
+      RegExp(r'(\d{3,4})\s*p\b', caseSensitive: false).firstMatch(s) ??
       RegExp(r'^\s*(\d{3,4})\s*$').firstMatch(s);
   return m == null ? 0 : int.parse(m.group(1)!);
 }
@@ -52,7 +54,9 @@ class GenericHtmlExtractor implements Extractor {
   }
 
   String _title(Document doc, String fallback) {
-    final og = doc.querySelector('meta[property="og:title"]')?.attributes['content'];
+    final og = doc
+        .querySelector('meta[property="og:title"]')
+        ?.attributes['content'];
     final t = (og ?? doc.querySelector('title')?.text ?? '').trim();
     return t.isEmpty ? fallback : t;
   }
@@ -64,7 +68,8 @@ class GenericHtmlExtractor implements Extractor {
     void add(String? raw, [int q = 0]) {
       if (raw == null) return;
       raw = raw.trim().replaceAll(r'\/', '/').replaceAll('&amp;', '&');
-      if (raw.isEmpty || raw.startsWith('blob:') || raw.startsWith('data:')) return;
+      if (raw.isEmpty || raw.startsWith('blob:') || raw.startsWith('data:'))
+        return;
       final u = base.resolve(raw);
       if (u.scheme != 'http' && u.scheme != 'https') return;
       final s = u.toString();
@@ -100,7 +105,9 @@ class GenericHtmlExtractor implements Extractor {
         add(s.attributes['src'], _qualityOf(label));
       }
     }
-    for (final s in doc.querySelectorAll('script[type="application/ld+json"]')) {
+    for (final s in doc.querySelectorAll(
+      'script[type="application/ld+json"]',
+    )) {
       try {
         _walkLd(jsonDecode(s.text), (u) => add(u));
       } catch (_) {}
@@ -150,7 +157,15 @@ class GenericHtmlExtractor implements Extractor {
         try {
           for (final l in await hlsLinks(s.url, http)) {
             links.add(
-              DownloadLink(l.quality, l.url, false, null, true, l.ext, '$title.${l.ext}'),
+              DownloadLink(
+                l.quality,
+                l.url,
+                false,
+                null,
+                true,
+                l.ext,
+                '$title.${l.ext}',
+              ),
             );
           }
         } catch (_) {}
@@ -177,7 +192,15 @@ class GenericHtmlExtractor implements Extractor {
       if (ext.isEmpty) ext = extForMime(h?.type) ?? 'mp4';
       final mb = h?.length == null ? null : h!.length! / 1048576;
       found.add(
-        DownloadLink(plain[i].quality, h?.url ?? plain[i].url, false, mb, false, ext, '$title.$ext'),
+        DownloadLink(
+          plain[i].quality,
+          h?.url ?? plain[i].url,
+          false,
+          mb,
+          false,
+          ext,
+          '$title.$ext',
+        ),
       );
     }
     final big = found.where((l) => (l.mb ?? 1) >= 0.1).toList();
@@ -195,14 +218,16 @@ class GenericHtmlExtractor implements Extractor {
       final img = a.querySelector('img');
       if (img == null) continue;
       final h = a.attributes['href']!.trim();
-      if (h.isEmpty || h.startsWith('#') || h.startsWith('javascript:')) continue;
+      if (h.isEmpty || h.startsWith('#') || h.startsWith('javascript:'))
+        continue;
       final u = page.resolve(h).removeFragment();
       if (u.scheme != 'http' && u.scheme != 'https') continue;
       if (u.path == '/' || u.path.isEmpty) continue;
       if (u.toString() == page.removeFragment().toString()) continue;
       if (!seen.add(u.toString())) continue;
       final isFile = mediaExts.contains(extOf(u.path));
-      final raw = (a.attributes['title'] ?? img.attributes['alt'] ?? a.text).trim();
+      final raw = (a.attributes['title'] ?? img.attributes['alt'] ?? a.text)
+          .trim();
       final slug = (nameFromUrl(u) ?? u.host);
       final thumbSrc = img.attributes['data-src'] ?? img.attributes['src'];
       final thumb = thumbSrc == null ? null : page.resolve(thumbSrc).toString();

@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
+import 'proxy.dart';
+
 enum DnsMode { system, cloudflare, google, dnssb, custom }
 
 extension DnsModeInfo on DnsMode {
@@ -166,9 +168,9 @@ class DnsResolver {
       DnsMode.system.label,
       () async {
         try {
-          final ok = (await _system(
-            host,
-          )).where((i) => !isBlockedIp(i)).toList();
+          final ok = (await _system(host))
+              .where((i) => !isBlockedIp(i))
+              .toList();
           return ok.isEmpty ? null : (ok, 60);
         } catch (_) {
           return null;
@@ -204,6 +206,10 @@ class DnsResolver {
     String? proxyHost,
     int? proxyPort,
   ) {
+    final px = ProxySettings.instance.config;
+    if (proxyHost == null && px.usable && px.type == ProxyType.socks5) {
+      return _connectSocks(uri, px);
+    }
     final viaProxy = proxyHost != null;
     final host = viaProxy ? proxyHost : uri.host;
     final port = viaProxy ? (proxyPort ?? 80) : uri.port;
@@ -231,10 +237,45 @@ class DnsResolver {
     return Future.value(ConnectionTask.fromSocket(open(), () {}));
   }
 
+  Future<ConnectionTask<Socket>> _connectSocks(Uri uri, ProxyConfig px) {
+    Future<Socket> open() async {
+      final ips = await resolve(px.host);
+      Object? last;
+      for (final ip in ips) {
+        try {
+          final raw = await socks5Connect(px, ip, uri.host, uri.port);
+          if (uri.scheme != 'https') return raw;
+          return await SecureSocket.secure(raw, host: uri.host);
+        } catch (e) {
+          last = e;
+        }
+      }
+      throw last ?? SocketException("Failed host lookup: '${px.host}'");
+    }
+
+    return Future.value(ConnectionTask.fromSocket(open(), () {}));
+  }
+
   /// Plugs this resolver into [dio].
   void attach(Dio dio) {
     dio.httpClientAdapter = IOHttpClientAdapter(
-      createHttpClient: () => HttpClient()..connectionFactory = connect,
+      createHttpClient: () {
+        final c = HttpClient()
+          ..connectionFactory = connect
+          ..findProxy = ProxySettings.instance.findProxy;
+        c.authenticateProxy = (host, port, scheme, realm) async {
+          final p = ProxySettings.instance.config;
+          if (!p.hasAuth) return false;
+          c.addProxyCredentials(
+            host,
+            port,
+            realm ?? '',
+            HttpClientBasicCredentials(p.user, p.pass),
+          );
+          return true;
+        };
+        return c;
+      },
     );
   }
 }

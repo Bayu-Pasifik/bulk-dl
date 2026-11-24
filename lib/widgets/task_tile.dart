@@ -21,7 +21,11 @@ class TaskTile extends StatelessWidget {
         final active =
             t.status == Status.downloading || t.status == Status.resolving;
         final (label, color, icon) = switch (t.status) {
-          Status.waiting => (s.taskWaiting, cs.onSurfaceVariant, Icons.schedule),
+          Status.waiting => (
+            s.taskWaiting,
+            cs.onSurfaceVariant,
+            Icons.schedule,
+          ),
           Status.resolving => (
             s.taskPreparing,
             cs.onSurfaceVariant,
@@ -33,7 +37,11 @@ class TaskTile extends StatelessWidget {
             cs.primary,
             Icons.downloading,
           ),
-          Status.done => ('${s.taskDone}${_ql(t.quality)}', cs.primary, Icons.check_circle),
+          Status.done => (
+            '${s.taskDone}${_ql(t.quality)}',
+            cs.primary,
+            Icons.check_circle,
+          ),
           Status.failed => (s.taskFailed(t.error ?? ''), cs.error, Icons.error),
           Status.canceled => (s.taskCanceled, cs.tertiary, Icons.pause_circle),
         };

@@ -59,6 +59,9 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     });
     await queue.loadSettings();
+    if (queue.wgAutoConnect && queue.wgConfig.isNotEmpty && !queue.vpnUp) {
+      queue.setVpn(true);
+    }
     await _loadPrefs();
     urlCtl.text = queue.lastUrl;
     queue.initNet();
@@ -164,9 +167,12 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  static List<String> extractUrls(String text) => RegExp(
-    r'https?://[^\s]+',
-  ).allMatches(text).map((m) => m.group(0)!).toSet().toList();
+  static List<String> extractUrls(String text) =>
+      RegExp(r'https?://[^\s]+')
+          .allMatches(text)
+          .map((m) => m.group(0)!)
+          .toSet()
+          .toList();
 
   /// Classifies every link: files/videos go to the queue (mode permitting),
   /// playlists are collected for the picker.

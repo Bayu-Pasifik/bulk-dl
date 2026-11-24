@@ -39,8 +39,10 @@ void main() {
   group('Scraper.fetchPlaylist', () {
     test('walks pages until no new videos and dedupes', () async {
       final adapter = FakeAdapter({
-        '/playlist/': '<html>${card('a', 'one', 'One')}${card('b', 'two', 'Two')}</html>',
-        '/playlist/2/': '<html>${card('b', 'two', 'Two')}${card('c', 'three', 'Three')}</html>',
+        '/playlist/':
+            '<html>${card('a', 'one', 'One')}${card('b', 'two', 'Two')}</html>',
+        '/playlist/2/':
+            '<html>${card('b', 'two', 'Two')}${card('c', 'three', 'Three')}</html>',
         '/playlist/3/': '<html>${card('c', 'three', 'Three')}</html>',
       });
       final s = Scraper()..dio.httpClientAdapter = adapter;
@@ -63,7 +65,10 @@ void main() {
     test('empty first page throws', () async {
       final s = Scraper()
         ..dio.httpClientAdapter = FakeAdapter({'/p/': '<html></html>'});
-      expect(() => s.fetchPlaylist('https://site.test/p/'), throwsA(isA<String>()));
+      expect(
+        () => s.fetchPlaylist('https://site.test/p/'),
+        throwsA(isA<String>()),
+      );
     });
   });
 
@@ -113,7 +118,11 @@ void main() {
     ];
 
     test('best quality under cap, h264 before av1', () {
-      expect(Scraper.candidates(links, 720).map((e) => e.url), ['b', 'b-av1', 'a']);
+      expect(Scraper.candidates(links, 720).map((e) => e.url), [
+        'b',
+        'b-av1',
+        'a',
+      ]);
       expect(Scraper.pick(links, 720)!.url, 'b');
     });
 
@@ -127,5 +136,4 @@ void main() {
     expect(formatSize(30), '30 MB');
     expect(formatSize(2048), '2.00 GB');
   });
-
 }

@@ -15,14 +15,16 @@ class Classified {
 
 /// Ordered list of extractors; the first one that recognises a URL wins.
 class Registry {
-  Registry([List<Extractor>? list]) : all = list ??
-            [
-              DirectFileExtractor(),
-              XvideosFamilyExtractor(),
-              MediaDefExtractor(),
-              EpornerExtractor(),
-              GenericHtmlExtractor(),
-            ];
+  Registry([List<Extractor>? list])
+    : all =
+          list ??
+          [
+            DirectFileExtractor(),
+            XvideosFamilyExtractor(),
+            MediaDefExtractor(),
+            EpornerExtractor(),
+            GenericHtmlExtractor(),
+          ];
   final List<Extractor> all;
 
   Extractor byId(String id) =>

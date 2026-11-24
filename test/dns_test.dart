@@ -61,7 +61,15 @@ void main() {
   });
 
   test('isBlockedIp flags sinkholes, private and known block pages', () {
-    for (final ip in ['127.0.0.1', '0.0.0.0', '10.1.2.3', '192.168.1.1', '172.20.0.1', '36.86.63.185', 'garbage']) {
+    for (final ip in [
+      '127.0.0.1',
+      '0.0.0.0',
+      '10.1.2.3',
+      '192.168.1.1',
+      '172.20.0.1',
+      '36.86.63.185',
+      'garbage',
+    ]) {
       expect(isBlockedIp(ip), isTrue, reason: ip);
     }
     expect(isBlockedIp('10.0.2.2', allowPrivate: true), isFalse);
@@ -98,7 +106,8 @@ void main() {
     });
 
     test('selected provider answers first, system not used', () async {
-      final r = make({'1.1.1.1': answer('93.184.216.34')})..mode = DnsMode.cloudflare;
+      final r = make({'1.1.1.1': answer('93.184.216.34')})
+        ..mode = DnsMode.cloudflare;
       expect(await r.resolve('x.test'), ['93.184.216.34']);
       expect(r.lastProvider, DnsMode.cloudflare.label);
       expect(systemCalls, isEmpty);
@@ -115,19 +124,19 @@ void main() {
     });
 
     test('system mode: blocked answer falls through to DoH', () async {
-      final r = make(
-        {'1.1.1.1': answer('93.184.216.34')},
-        system: (_) => ['36.86.63.185'],
-      )..mode = DnsMode.system;
+      final r = make({
+        '1.1.1.1': answer('93.184.216.34'),
+      }, system: (_) => ['36.86.63.185'])..mode = DnsMode.system;
       expect(await r.resolve('blocked.test'), ['93.184.216.34']);
       expect(systemCalls, ['blocked.test']);
       expect(r.lastProvider, DnsMode.cloudflare.label);
     });
 
     test('doh answer that is a block-page ip is skipped', () async {
-      final r = make(
-        {'1.1.1.1': answer('127.0.0.1'), '8.8.8.8': answer('9.9.9.1')},
-      )..mode = DnsMode.cloudflare;
+      final r = make({
+        '1.1.1.1': answer('127.0.0.1'),
+        '8.8.8.8': answer('9.9.9.1'),
+      })..mode = DnsMode.cloudflare;
       expect(await r.resolve('x.test'), ['9.9.9.1']);
     });
 

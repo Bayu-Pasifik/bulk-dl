@@ -59,6 +59,25 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 trailing: Text('${q.concurrency}', style: tt.titleMedium),
               ),
+              ListTile(
+                title: Text(s.settingsMaxPages),
+                subtitle: Text(s.settingsMaxPagesSub),
+                trailing: DropdownMenu<int>(
+                  initialSelection: q.maxPages,
+                  width: 110,
+                  requestFocusOnTap: false,
+                  dropdownMenuEntries: [
+                    for (final v in const [1, 3, 5, 10, 20, 50, 100])
+                      DropdownMenuEntry(value: v, label: '$v'),
+                  ],
+                  onSelected: (v) {
+                    if (v != null) {
+                      q.maxPages = v;
+                      app.refresh();
+                    }
+                  },
+                ),
+              ),
               SwitchListTile(
                 title: Text(s.settingsWifiOnly),
                 subtitle: Text(s.settingsWifiOnlySub),

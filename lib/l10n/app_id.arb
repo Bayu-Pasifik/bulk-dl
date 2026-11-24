@@ -61,6 +61,8 @@
   "settingsTitle": "Pengaturan",
   "settingsDownloads": "Unduhan",
   "settingsParallel": "Unduhan paralel",
+  "settingsMaxPages": "Halaman playlist yang dipindai",
+  "settingsMaxPagesSub": "Batasi jumlah halaman daftar yang dibaca per link playlist",
   "settingsWifiOnly": "Hanya lewat Wi-Fi",
   "settingsWifiOnlySub": "Jeda unduhan saat memakai data seluler",
   "settingsSaveLocation": "Lokasi simpan",

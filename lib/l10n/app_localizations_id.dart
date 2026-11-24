@@ -222,6 +222,13 @@ class AppLocalizationsId extends AppLocalizations {
   String get settingsParallel => 'Unduhan paralel';
 
   @override
+  String get settingsMaxPages => 'Halaman playlist yang dipindai';
+
+  @override
+  String get settingsMaxPagesSub =>
+      'Batasi jumlah halaman daftar yang dibaca per link playlist';
+
+  @override
   String get settingsWifiOnly => 'Hanya lewat Wi-Fi';
 
   @override

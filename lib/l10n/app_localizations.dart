@@ -464,6 +464,18 @@ abstract class AppLocalizations {
   /// **'Parallel downloads'**
   String get settingsParallel;
 
+  /// No description provided for @settingsMaxPages.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist pages to scan'**
+  String get settingsMaxPages;
+
+  /// No description provided for @settingsMaxPagesSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Limits how many listing pages are read per playlist link'**
+  String get settingsMaxPagesSub;
+
   /// No description provided for @settingsWifiOnly.
   ///
   /// In en, this message translates to:

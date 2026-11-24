@@ -222,6 +222,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsParallel => 'Parallel downloads';
 
   @override
+  String get settingsMaxPages => 'Playlist pages to scan';
+
+  @override
+  String get settingsMaxPagesSub =>
+      'Limits how many listing pages are read per playlist link';
+
+  @override
   String get settingsWifiOnly => 'Wi-Fi only';
 
   @override

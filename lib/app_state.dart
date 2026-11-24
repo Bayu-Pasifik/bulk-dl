@@ -204,6 +204,7 @@ class AppState extends ChangeNotifier {
               await c.extractor.listPlaylist(
                 c.uri,
                 scraper.http,
+                maxPages: queue.maxPages,
                 onProgress: (n) {
                   message = str.msgFound(list.length + n);
                   notifyListeners();

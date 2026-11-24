@@ -94,6 +94,14 @@ class DownloadQueue extends ChangeNotifier {
   int _maxQuality = 720; // 1080p+ needs a login on the site
   int _concurrency = 2;
 
+  int _maxPages = 10; // listing pages scanned per playlist link
+
+  int get maxPages => _maxPages;
+  set maxPages(int v) {
+    _maxPages = v;
+    _saveSettings();
+  }
+
   int get maxQuality => _maxQuality;
   set maxQuality(int v) {
     _maxQuality = v;
@@ -114,6 +122,7 @@ class DownloadQueue extends ChangeNotifier {
       final p = await SharedPreferences.getInstance();
       _maxQuality = p.getInt('s_quality') ?? _maxQuality;
       _concurrency = p.getInt('s_parallel') ?? _concurrency;
+      _maxPages = p.getInt('s_pages') ?? _maxPages;
       _wifiOnly = p.getBool('s_wifi') ?? _wifiOnly;
       lastUrl = p.getString('s_url') ?? '';
       final cj = p.getString('s_cookies');
@@ -161,6 +170,7 @@ class DownloadQueue extends ChangeNotifier {
       final p = await SharedPreferences.getInstance();
       await p.setInt('s_quality', _maxQuality);
       await p.setInt('s_parallel', _concurrency);
+      await p.setInt('s_pages', _maxPages);
       await p.setBool('s_wifi', _wifiOnly);
       await p.setString('s_url', lastUrl);
     } catch (_) {}

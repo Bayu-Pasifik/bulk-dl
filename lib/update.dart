@@ -3,12 +3,15 @@ import 'package:flutter/services.dart';
 
 /// A newer release published on GitHub.
 class UpdateInfo {
-  UpdateInfo(this.version, this.notes, this.url);
+  UpdateInfo(this.version, this.notes, this.url, [this.sha256]);
   final String version;
   final String notes;
 
   /// APK for this device's CPU when the release has one, else the release page.
   final String url;
+
+  /// SHA-256 of the APK from the release `.sha256` asset, when published.
+  final String? sha256;
 }
 
 /// Checks the GitHub "latest release" of this app against the installed
@@ -74,6 +77,30 @@ class Updater {
     return null;
   }
 
+  /// First 64-hex token of a `sha256sum` style file, lower-cased, else null.
+  static String? parseSha256(String text) {
+    final m = RegExp(r'\b([0-9a-fA-F]{64})\b').firstMatch(text);
+    return m?.group(1)!.toLowerCase();
+  }
+
+  /// Best effort: null when the release has no checksum file.
+  static Future<String?> fetchSha256(Dio dio, String apkUrl) async {
+    try {
+      final r = await dio.get<String>(
+        '$apkUrl.sha256',
+        options: Options(
+          responseType: ResponseType.plain,
+          sendTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+          headers: {'User-Agent': 'bulk_dl'},
+        ),
+      );
+      return parseSha256(r.data ?? '');
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Tag of the latest release, read from the `releases/latest` redirect
   /// (the REST API is rate limited to 60 requests/hour per IP).
   static Future<String> latestTag(Dio dio) async {
@@ -101,6 +128,7 @@ class Updater {
     final apk = apkName(await _abis());
     final base = 'https://github.com/$repo/releases';
     final url = apk == null ? '$base/tag/$tag' : '$base/download/$tag/$apk';
-    return UpdateInfo(tag.replaceFirst(RegExp(r'^[vV]'), ''), '', url);
+    final sum = apk == null ? null : await fetchSha256(dio, url);
+    return UpdateInfo(tag.replaceFirst(RegExp(r'^[vV]'), ''), '', url, sum);
   }
 }

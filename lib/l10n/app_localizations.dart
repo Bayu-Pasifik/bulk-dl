@@ -896,6 +896,12 @@ abstract class AppLocalizations {
   /// **'Later'**
   String get updateLater;
 
+  /// No description provided for @updateSha256.
+  ///
+  /// In en, this message translates to:
+  /// **'SHA-256 of the APK (compare after download):'**
+  String get updateSha256;
+
   /// No description provided for @updateFailed.
   ///
   /// In en, this message translates to:

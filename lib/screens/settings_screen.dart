@@ -454,9 +454,28 @@ Future<void> _checkUpdate(BuildContext context) async {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(s.updateAvailable(u.version)),
-        content: u.notes.isEmpty
+        content: u.notes.isEmpty && u.sha256 == null
             ? null
-            : SingleChildScrollView(child: Text(u.notes)),
+            : SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (u.notes.isNotEmpty) Text(u.notes),
+                    if (u.sha256 != null) ...[
+                      Text(s.updateSha256),
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        u.sha256!,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),

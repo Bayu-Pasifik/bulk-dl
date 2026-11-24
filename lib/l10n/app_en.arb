@@ -156,6 +156,7 @@
   "@updateAvailable": {"placeholders": {"version": {"type": "String"}}},
   "updateDownload": "Download",
   "updateLater": "Later",
+  "updateSha256": "SHA-256 of the APK (compare after download):",
   "updateFailed": "Update check failed: {error}",
   "@updateFailed": {"placeholders": {"error": {"type": "String"}}}
 }

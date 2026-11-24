@@ -139,6 +139,7 @@
   "@updateAvailable": {"placeholders": {"version": {"type": "String"}}},
   "updateDownload": "Unduh",
   "updateLater": "Nanti",
+  "updateSha256": "SHA-256 APK (bandingkan setelah unduh):",
   "updateFailed": "Gagal memeriksa pembaruan: {error}",
   "@updateFailed": {"placeholders": {"error": {"type": "String"}}}
 }

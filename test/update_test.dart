@@ -11,6 +11,14 @@ void main() {
     expect(Updater.isNewer('v2', '1.9.9'), true);
   });
 
+  test('parse sha256 file', () {
+    final h = 'ab' * 32;
+    expect(Updater.parseSha256('$h  app-arm64-v8a-release.apk\n'), h);
+    expect(Updater.parseSha256(h.toUpperCase()), h);
+    expect(Updater.parseSha256('not a hash'), null);
+    expect(Updater.parseSha256('a' * 63), null);
+  });
+
   test('apk name by abi order', () {
     expect(
       Updater.apkName(['arm64-v8a', 'armeabi-v7a']),

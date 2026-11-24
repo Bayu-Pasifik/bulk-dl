@@ -468,6 +468,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get updateLater => 'Later';
 
   @override
+  String get updateSha256 => 'SHA-256 of the APK (compare after download):';
+
+  @override
   String updateFailed(String error) {
     return 'Update check failed: $error';
   }

@@ -24,3 +24,20 @@ node tool/mock_server.js
 flutter test
 flutter analyze
 ```
+
+## Release signing
+
+Release APKs are signed with a private keystore, not the debug key.
+
+- Local: `android/key.properties` (gitignored) points at the keystore:
+  `storeFile`, `storePassword`, `keyAlias`, `keyPassword`. Without it the
+  release build falls back to the debug key and prints a warning.
+- Back up the keystore and its passwords somewhere safe. Losing it means
+  installed apps can never be updated in place.
+- CI (`.github/workflows/release.yml`, runs on `v*` tags) needs repo secrets
+  `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
+  It builds per-ABI APKs, writes a `.sha256` file for each and publishes them.
+- Release flow: bump `version` in `pubspec.yaml`, commit, `git tag vX.Y.Z`,
+  `git push --tags`.
+- Signer SHA-256: `f64afe1736604fdc42f4a12c0f6fd66df10b0c73375f98737b286df66b9f2923`
+  (`apksigner verify --print-certs <apk>`).

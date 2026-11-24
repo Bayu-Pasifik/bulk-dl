@@ -469,6 +469,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get updateLater => 'Nanti';
 
   @override
+  String get updateSha256 => 'SHA-256 APK (bandingkan setelah unduh):';
+
+  @override
   String updateFailed(String error) {
     return 'Gagal memeriksa pembaruan: $error';
   }

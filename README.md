@@ -1,17 +1,26 @@
 # bulk_dl
 
-A new Flutter project.
+Android app (Flutter) that bulk-downloads videos: playlists, single video pages
+and direct file links, with a queue, background service, retry and resume.
 
-## Getting Started
+Docs: [PRD](docs/PRD.md) · [Style](docs/STYLE.md) · [Tasks](docs/TASKS.md)
 
-This project is a starting point for a Flutter application.
+## Run
 
-A few resources to get you started if this is your first Flutter project:
+```
+flutter pub get
+flutter run
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Local mock site for emulator tests (emulator reaches host as `10.0.2.2`):
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```
+node tool/mock_server.js
+```
+
+## Test
+
+```
+flutter test
+flutter analyze
+```

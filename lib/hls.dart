@@ -175,7 +175,7 @@ Future<String> downloadHls(
   File out, {
   CancelToken? token,
   void Function(int done, int total, int bytes)? onProgress,
-  int parallel = 3,
+  int parallel = 64,
 }) async {
   final text =
       (await dio.get<String>(
@@ -225,17 +225,24 @@ Future<String> downloadHls(
       bytes += d.length;
     }
     final total = media.segments.length;
-    for (var i = 0; i < total; i += parallel) {
-      final batch = media.segments.sublist(
-        i,
-        i + parallel > total ? total : i + parallel,
-      );
-      final parts = await Future.wait(batch.map(segment));
-      for (final p in parts) {
-        sink.add(p);
-        bytes += p.length;
+    // Sliding window: keep [parallel] segments in flight, write in order.
+    final inflight = <Future<Uint8List>>[];
+    var started = 0;
+    void fill() {
+      while (started < total && inflight.length < parallel) {
+        final f = segment(media.segments[started++]);
+        f.ignore(); // errors surface when awaited in order
+        inflight.add(f);
       }
-      onProgress?.call(i + batch.length, total, bytes);
+    }
+
+    fill();
+    for (var i = 0; i < total; i++) {
+      final p = await inflight.removeAt(0);
+      fill();
+      sink.add(p);
+      bytes += p.length;
+      onProgress?.call(i + 1, total, bytes);
     }
   } finally {
     await sink.close();

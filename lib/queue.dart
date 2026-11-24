@@ -12,6 +12,7 @@ import 'hls.dart';
 import 'library.dart';
 import 'net/dns.dart';
 import 'net/errors.dart';
+import 'net/multi.dart';
 import 'net/proxy.dart';
 import 'net/vpn.dart';
 import 'naming.dart';
@@ -520,6 +521,7 @@ class DownloadQueue extends ChangeNotifier {
       var offset = 0;
       String? fname;
       var isHls = false;
+      var canRange = false;
       for (final c in cands) {
         final cname = await _target(dir, t.video, c);
         if (c.hls) {
@@ -555,6 +557,9 @@ class DownloadQueue extends ChangeNotifier {
           continue;
         }
         body = r.data;
+        canRange = (r.headers.value('accept-ranges') ?? '')
+            .toLowerCase()
+            .contains('bytes');
         link = c;
         fname = cname;
         offset = r.statusCode == 206 ? have : 0; // 200 = server ignored Range
@@ -596,18 +601,53 @@ class DownloadQueue extends ChangeNotifier {
         var received = offset;
         t.startMeter(received, total);
         t.update(s: Status.downloading, p: total > 0 ? received / total : 0);
-        final sink = File(part)
-            .openWrite(mode: offset > 0 ? FileMode.append : FileMode.write);
         final sw = Stopwatch()..start();
         try {
-          await for (final chunk in body.stream) {
-            sink.add(chunk);
-            received += chunk.length;
-            t.sample(received);
-            if (total > 0) t.update(p: received / total);
+          var multi = false;
+          var stream = body.stream;
+          if (canRange && offset == 0 && total >= 2 * 1048576) {
+            // Server supports Range: split across up to 64 connections.
+            await stream.listen((_) {}).cancel();
+            try {
+              await downloadRanged(
+                scraper.dio,
+                link.url,
+                File(part),
+                total,
+                token: token,
+                onProgress: (n) {
+                  received = n;
+                  t.sample(n);
+                  t.update(p: n / total);
+                },
+              );
+              multi = true;
+            } on RangeUnsupported {
+              final r = await scraper.dio.get<ResponseBody>(
+                link.url,
+                cancelToken: token,
+                options: Options(responseType: ResponseType.stream),
+              );
+              stream = r.data!.stream;
+              received = 0;
+            }
+          }
+          if (!multi) {
+            final sink = File(part).openWrite(
+              mode: offset > 0 ? FileMode.append : FileMode.write,
+            );
+            try {
+              await for (final chunk in stream) {
+                sink.add(chunk);
+                received += chunk.length;
+                t.sample(received);
+                if (total > 0) t.update(p: received / total);
+              }
+            } finally {
+              await sink.close();
+            }
           }
         } finally {
-          await sink.close();
           final secs = sw.elapsedMilliseconds / 1000;
           final mb = (received - offset) / 1048576;
           debugPrint('SPEED ${mb.toStringAsFixed(1)}MB in '

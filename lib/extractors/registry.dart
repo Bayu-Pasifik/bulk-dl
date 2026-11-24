@@ -25,6 +25,7 @@ class Registry {
             KvsExtractor(),
             XhamsterExtractor(),
             TnaflixExtractor(),
+            PornoneExtractor(),
             EpornerExtractor(),
             GenericHtmlExtractor(),
           ];

@@ -629,3 +629,69 @@ class TnaflixExtractor extends SiteExtractor {
     return withSizes(links, http);
   }
 }
+
+/// pornone: `<video><source src label res>` mp4 links; video pages end in a
+/// numeric id (`/<cat>/<slug>/<id>/`).
+class PornoneExtractor extends SiteExtractor {
+  @override
+  String get id => 'pornone';
+
+  @override
+  List<String> get hosts => const ['pornone.com'];
+
+  @override
+  String? videoId(Uri u) {
+    final segs = u.pathSegments.where((s) => s.isNotEmpty).toList();
+    if (segs.length == 3 && RegExp(r'^\d{5,}$').hasMatch(segs[2])) {
+      return segs[2];
+    }
+    return null;
+  }
+
+  @override
+  Map<String, VideoItem> cards(Document doc, Uri page) {
+    final out = <String, VideoItem>{};
+    for (final a in doc.querySelectorAll('a.videocard[href]')) {
+      final u = page.resolve(a.attributes['href']!.trim()).removeFragment();
+      final id = matches(u) ? videoId(u) : null;
+      if (id == null || out.containsKey(id)) continue;
+      final img = a.querySelector('img.thumbimg');
+      final title =
+          (a.querySelector('.videotitle')?.text ?? img?.attributes['alt'] ?? '')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
+      final raw = img?.attributes['src'];
+      out[id] = _item(
+        u,
+        title: title,
+        thumb: raw == null ? null : page.resolve(raw).toString(),
+      );
+    }
+    return out;
+  }
+
+  @override
+  Future<List<DownloadLink>> resolve(VideoItem v, Http http) async {
+    final body = await http.getText(v.url);
+    final title = pageTitle(body, v.title);
+    final base = Uri.parse(v.url);
+    final links = <DownloadLink>[];
+    final seen = <String>{};
+    for (final s in html.parse(body).querySelectorAll('video source[src]')) {
+      final src = s.attributes['src'] ?? '';
+      if (!src.contains('.mp4')) continue;
+      final url = base.resolve(src).toString();
+      if (!seen.add(url)) continue;
+      // The label can lie (720x406 tagged "480p"): prefer the res attribute.
+      final q =
+          int.tryParse(s.attributes['res'] ?? '') ??
+          int.tryParse(
+            (s.attributes['label'] ?? '').replaceAll(RegExp(r'\D'), ''),
+          ) ??
+          0;
+      links.add(DownloadLink(q, url, false, null, false, 'mp4', '$title.mp4'));
+    }
+    if (links.isEmpty) throw 'No download links on page';
+    return withSizes(links, http);
+  }
+}

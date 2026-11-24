@@ -319,6 +319,55 @@ var flashvars = {
     );
   });
 
+  test('pornone: ids, source res preferred, previews ignored', () async {
+    final k = await reg.classify(
+      'https://pornone.com/white/some-slug/281198217/',
+      FakeHttp(),
+    );
+    expect(k.extractor.id, 'pornone');
+    expect(k.kind, UrlKind.video);
+    final h = await reg.classify('https://pornone.com/newest/', FakeHttp());
+    expect(h.kind, UrlKind.playlist);
+    final http = FakeHttp(
+      pages: {
+        k.uri.toString():
+            '<html><title>P1</title><video>'
+            '<source src="https://s.x/a_1080.mp4?z=1" label="1080p" res="1080"/>'
+            '<source src="https://s.x/a_406.mp4?z=2" label="480p" res="406"/>'
+            '</video><div><video src="https://g.x/lpp/prev.20.mp4"></video></div></html>',
+      },
+      heads: {
+        'https://s.x/a_1080.mp4?z=1': _mp4(
+          'https://s.x/a_1080.mp4?z=1',
+          2097152,
+        ),
+        'https://s.x/a_406.mp4?z=2': _mp4('https://s.x/a_406.mp4?z=2', 1048576),
+      },
+    );
+    final links = await k.extractor.resolve(
+      k.extractor.single(k.uri, http),
+      http,
+    );
+    expect(links.map((l) => l.quality), [1080, 406]);
+  });
+
+  test(
+    'pornone listing: title and thumb come from the card, not menu icons',
+    () async {
+      const page = '''
+<html><a href="https://pornone.com/money/free-anal/277596391/" class="popbop videocard">
+<span class="menubtn"><img class="icon" src="/images/svg/addto.svg"></span>
+<img src="https://th.x/t/d11.jpg" alt="Free anal" class="imgvideo thumbimg">
+<div class="videotitle ">Free Anal</div></a></html>''';
+      final http = FakeHttp(pages: {'https://pornone.com/newest/': page});
+      final k = await reg.classify('https://pornone.com/newest/', http);
+      final items = await k.extractor.listPlaylist(k.uri, http);
+      expect(items.single.title, 'Free Anal');
+      expect(items.single.thumb, 'https://th.x/t/d11.jpg');
+      expect(items.single.id, '277596391');
+    },
+  );
+
   test('unrelated host still falls through to generic', () async {
     final http = FakeHttp(
       pages: {'https://example.org/p': '<video src="/a.mp4"></video>'},

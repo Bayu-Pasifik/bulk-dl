@@ -197,6 +197,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get queuePausedWifi => 'Paused: waiting for Wi-Fi';
 
   @override
+  String get queueSearch => 'Search queue';
+
+  @override
+  String get queueNoMatch => 'No matching downloads';
+
+  @override
+  String get filterAll => 'All';
+
+  @override
+  String get filterActive => 'Active';
+
+  @override
+  String get filterDone => 'Done';
+
+  @override
+  String get filterFailed => 'Failed';
+
+  @override
   String get taskWaiting => 'Waiting';
 
   @override

@@ -410,6 +410,42 @@ abstract class AppLocalizations {
   /// **'Paused: waiting for Wi-Fi'**
   String get queuePausedWifi;
 
+  /// No description provided for @queueSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search queue'**
+  String get queueSearch;
+
+  /// No description provided for @queueNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching downloads'**
+  String get queueNoMatch;
+
+  /// No description provided for @filterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get filterAll;
+
+  /// No description provided for @filterActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get filterActive;
+
+  /// No description provided for @filterDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get filterDone;
+
+  /// No description provided for @filterFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get filterFailed;
+
   /// No description provided for @taskWaiting.
   ///
   /// In en, this message translates to:

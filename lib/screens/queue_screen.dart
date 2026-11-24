@@ -3,10 +3,18 @@ import 'package:material_ui/material_ui.dart';
 import '../app_scope.dart';
 import '../l10n/app_localizations.dart';
 import '../queue.dart';
+import '../queue_filter.dart';
 import '../widgets/task_tile.dart';
 
-class QueueScreen extends StatelessWidget {
+class QueueScreen extends StatefulWidget {
   const QueueScreen({super.key});
+  @override
+  State<QueueScreen> createState() => _QueueScreenState();
+}
+
+class _QueueScreenState extends State<QueueScreen> {
+  String _query = '';
+  QueueFilter _filter = QueueFilter.all;
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +27,7 @@ class QueueScreen extends StatelessWidget {
         final cs = Theme.of(context).colorScheme;
         final st = q.stats();
         final busy = st.active + st.waiting > 0;
+        final shown = filterTasks(q.tasks, _query, _filter);
         return Scaffold(
           body: CustomScrollView(
             slivers: [
@@ -43,6 +52,47 @@ class QueueScreen extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                   sliver: SliverToBoxAdapter(child: _Summary(st, q.blocked)),
                 ),
+              if (q.tasks.isNotEmpty)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextField(
+                          onChanged: (v) => setState(() => _query = v),
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.search),
+                            hintText: s.queueSearch,
+                            border: const OutlineInputBorder(
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(28),
+                              ),
+                            ),
+                            isDense: true,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            for (final f in QueueFilter.values)
+                              ChoiceChip(
+                                label: Text(switch (f) {
+                                  QueueFilter.all => s.filterAll,
+                                  QueueFilter.active => s.filterActive,
+                                  QueueFilter.done => s.filterDone,
+                                  QueueFilter.failed => s.filterFailed,
+                                }),
+                                selected: _filter == f,
+                                onSelected: (_) => setState(() => _filter = f),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               if (q.tasks.isEmpty)
                 SliverFillRemaining(
                   hasScrollBody: false,
@@ -60,13 +110,18 @@ class QueueScreen extends StatelessWidget {
                     ),
                   ),
                 )
+              else if (shown.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(child: Text(s.queueNoMatch)),
+                )
               else
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
                   sliver: SliverList.separated(
-                    itemCount: q.tasks.length,
+                    itemCount: shown.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (_, i) => TaskTile(q.tasks[i], q),
+                    itemBuilder: (_, i) => TaskTile(shown[i], q),
                   ),
                 ),
             ],

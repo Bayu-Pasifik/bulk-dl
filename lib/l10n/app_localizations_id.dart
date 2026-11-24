@@ -197,6 +197,24 @@ class AppLocalizationsId extends AppLocalizations {
   String get queuePausedWifi => 'Dijeda: menunggu Wi-Fi';
 
   @override
+  String get queueSearch => 'Cari di antrean';
+
+  @override
+  String get queueNoMatch => 'Tidak ada unduhan yang cocok';
+
+  @override
+  String get filterAll => 'Semua';
+
+  @override
+  String get filterActive => 'Aktif';
+
+  @override
+  String get filterDone => 'Selesai';
+
+  @override
+  String get filterFailed => 'Gagal';
+
+  @override
   String get taskWaiting => 'Menunggu';
 
   @override

@@ -554,6 +554,36 @@ abstract class AppLocalizations {
   /// **'Pause downloads on mobile data'**
   String get settingsWifiOnlySub;
 
+  /// No description provided for @settingsSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Download schedule'**
+  String get settingsSchedule;
+
+  /// No description provided for @settingsScheduleSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Only download inside a daily time window'**
+  String get settingsScheduleSub;
+
+  /// No description provided for @settingsScheduleFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get settingsScheduleFrom;
+
+  /// No description provided for @settingsScheduleTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Until'**
+  String get settingsScheduleTo;
+
+  /// No description provided for @queuePausedSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused: outside the download schedule'**
+  String get queuePausedSchedule;
+
   /// No description provided for @settingsSaveLocation.
   ///
   /// In en, this message translates to:

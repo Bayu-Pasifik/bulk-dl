@@ -125,6 +125,52 @@ class SettingsScreen extends StatelessWidget {
                   app.refresh();
                 },
               ),
+              SwitchListTile(
+                title: Text(s.settingsSchedule),
+                subtitle: Text(s.settingsScheduleSub),
+                value: q.scheduleOn,
+                onChanged: (v) {
+                  q.setSchedule(on: v);
+                  app.refresh();
+                },
+              ),
+              if (q.scheduleOn)
+                Row(
+                  children: [
+                    Expanded(
+                      child: ListTile(
+                        title: Text(s.settingsScheduleFrom),
+                        subtitle: Text(_hm(q.scheduleStart)),
+                        onTap: () async {
+                          final t = await showTimePicker(
+                            context: context,
+                            initialTime: _tod(q.scheduleStart),
+                          );
+                          if (t != null) {
+                            q.setSchedule(start: t.hour * 60 + t.minute);
+                            app.refresh();
+                          }
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: ListTile(
+                        title: Text(s.settingsScheduleTo),
+                        subtitle: Text(_hm(q.scheduleEnd)),
+                        onTap: () async {
+                          final t = await showTimePicker(
+                            context: context,
+                            initialTime: _tod(q.scheduleEnd),
+                          );
+                          if (t != null) {
+                            q.setSchedule(end: t.hour * 60 + t.minute);
+                            app.refresh();
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ListTile(
                 leading: const Icon(Icons.folder_outlined),
                 title: Text(s.settingsSaveLocation),
@@ -494,3 +540,10 @@ Future<void> _checkUpdate(BuildContext context) async {
     msg.showSnackBar(SnackBar(content: Text(s.updateFailed(friendlyError(e)))));
   }
 }
+
+String _hm(int minutes) =>
+    '${(minutes ~/ 60).toString().padLeft(2, '0')}:'
+    '${(minutes % 60).toString().padLeft(2, '0')}';
+
+TimeOfDay _tod(int minutes) =>
+    TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60);

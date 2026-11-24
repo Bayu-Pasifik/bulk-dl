@@ -273,6 +273,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsWifiOnlySub => 'Pause downloads on mobile data';
 
   @override
+  String get settingsSchedule => 'Download schedule';
+
+  @override
+  String get settingsScheduleSub => 'Only download inside a daily time window';
+
+  @override
+  String get settingsScheduleFrom => 'From';
+
+  @override
+  String get settingsScheduleTo => 'Until';
+
+  @override
+  String get queuePausedSchedule => 'Paused: outside the download schedule';
+
+  @override
   String get settingsSaveLocation => 'Save location';
 
   @override

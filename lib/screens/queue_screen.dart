@@ -50,7 +50,16 @@ class _QueueScreenState extends State<QueueScreen> {
               if (busy)
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  sliver: SliverToBoxAdapter(child: _Summary(st, q.blocked)),
+                  sliver: SliverToBoxAdapter(
+                    child: _Summary(
+                      st,
+                      q.blocked
+                          ? (q.blockedByWifi
+                                ? s.queuePausedWifi
+                                : s.queuePausedSchedule)
+                          : null,
+                    ),
+                  ),
                 ),
               if (q.tasks.isNotEmpty)
                 SliverPadding(
@@ -138,9 +147,9 @@ class _QueueScreenState extends State<QueueScreen> {
 }
 
 class _Summary extends StatelessWidget {
-  const _Summary(this.st, this.paused);
+  const _Summary(this.st, this.pausedMsg);
   final QueueStats st;
-  final bool paused;
+  final String? pausedMsg;
 
   @override
   Widget build(BuildContext context) {
@@ -188,11 +197,11 @@ class _Summary extends StatelessWidget {
               s.queueCounts(st.active, st.waiting),
               style: tt.bodyMedium?.copyWith(color: cs.onPrimaryContainer),
             ),
-            if (paused)
+            if (pausedMsg != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  s.queuePausedWifi,
+                  pausedMsg!,
                   style: tt.labelLarge?.copyWith(color: cs.error),
                 ),
               ),

@@ -139,6 +139,10 @@ class DownloadQueue extends ChangeNotifier {
       );
       _maxPages = p.getInt('s_pages') ?? _maxPages;
       _wifiOnly = p.getBool('s_wifi') ?? _wifiOnly;
+      _scheduleOn = p.getBool('s_sched_on') ?? _scheduleOn;
+      _schedStart = p.getInt('s_sched_start') ?? _schedStart;
+      _schedEnd = p.getInt('s_sched_end') ?? _schedEnd;
+      _watchSchedule();
       lastUrl = p.getString('s_url') ?? '';
       final cj = p.getString('s_cookies');
       if (cj != null) {
@@ -249,6 +253,9 @@ class DownloadQueue extends ChangeNotifier {
       await p.setInt('s_conns', _connections);
       await p.setInt('s_pages', _maxPages);
       await p.setBool('s_wifi', _wifiOnly);
+      await p.setBool('s_sched_on', _scheduleOn);
+      await p.setInt('s_sched_start', _schedStart);
+      await p.setInt('s_sched_end', _schedEnd);
       await p.setString('s_url', lastUrl);
     } catch (_) {}
   }
@@ -280,7 +287,59 @@ class DownloadQueue extends ChangeNotifier {
   StreamSubscription<List<ConnectivityResult>>? _netSub;
 
   bool get wifiOnly => _wifiOnly;
-  bool get blocked => _wifiOnly && !_onWifi;
+  bool get blockedByWifi => _wifiOnly && !_onWifi;
+  bool get blocked => blockedByWifi || outsideSchedule;
+
+  // --- schedule: only download inside a daily time window --------------
+  bool _scheduleOn = false;
+  int _schedStart = 23 * 60; // minutes since midnight
+  int _schedEnd = 6 * 60;
+  Timer? _schedTimer;
+  bool _wasBlocked = false;
+
+  /// Clock source (replaceable in tests).
+  @visibleForTesting
+  DateTime Function() clock = DateTime.now;
+
+  bool get scheduleOn => _scheduleOn;
+  int get scheduleStart => _schedStart;
+  int get scheduleEnd => _schedEnd;
+
+  /// True when [now] (minutes since midnight) is inside [start, end).
+  /// The window may wrap past midnight; start == end means always.
+  static bool inWindow(int now, int start, int end) {
+    if (start == end) return true;
+    return start < end ? now >= start && now < end : now >= start || now < end;
+  }
+
+  bool get outsideSchedule {
+    if (!_scheduleOn) return false;
+    final n = clock();
+    return !inWindow(n.hour * 60 + n.minute, _schedStart, _schedEnd);
+  }
+
+  void setSchedule({bool? on, int? start, int? end}) {
+    _scheduleOn = on ?? _scheduleOn;
+    _schedStart = start ?? _schedStart;
+    _schedEnd = end ?? _schedEnd;
+    _saveSettings();
+    _watchSchedule();
+    _enforceNet();
+  }
+
+  /// Re-checks the window every 30 s while the schedule is on.
+  void _watchSchedule() {
+    _schedTimer?.cancel();
+    _schedTimer = null;
+    _wasBlocked = blocked;
+    if (!_scheduleOn) return;
+    _schedTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (blocked != _wasBlocked) {
+        _wasBlocked = blocked;
+        _enforceNet();
+      }
+    });
+  }
 
   set wifiOnly(bool v) {
     _wifiOnly = v;
@@ -303,6 +362,7 @@ class DownloadQueue extends ChangeNotifier {
 
   /// Pause running downloads when blocked, resume waiting ones otherwise.
   void _enforceNet() {
+    _wasBlocked = blocked;
     if (blocked) {
       for (final t in tasks.where((t) => t.busy)) {
         t.pausedByNet = true;
@@ -456,6 +516,7 @@ class DownloadQueue extends ChangeNotifier {
   @override
   void dispose() {
     _netSub?.cancel();
+    _schedTimer?.cancel();
     _tick?.cancel();
     super.dispose();
   }

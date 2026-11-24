@@ -273,6 +273,21 @@ class AppLocalizationsId extends AppLocalizations {
   String get settingsWifiOnlySub => 'Jeda unduhan saat memakai data seluler';
 
   @override
+  String get settingsSchedule => 'Jadwal unduhan';
+
+  @override
+  String get settingsScheduleSub => 'Unduh hanya pada jam tertentu setiap hari';
+
+  @override
+  String get settingsScheduleFrom => 'Mulai';
+
+  @override
+  String get settingsScheduleTo => 'Sampai';
+
+  @override
+  String get queuePausedSchedule => 'Dijeda: di luar jadwal unduhan';
+
+  @override
   String get settingsSaveLocation => 'Lokasi simpan';
 
   @override

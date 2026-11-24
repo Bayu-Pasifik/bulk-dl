@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../app_scope.dart';
 import '../app_state.dart';
+import '../l10n/app_localizations.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -18,16 +19,17 @@ class HomeScreen extends StatelessWidget {
     final app = AppScope.of(context);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final s = AppLocalizations.of(context);
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.large(title: const Text('Bulk DL')),
+          SliverAppBar.large(title: Text(s.appTitle)),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
             sliver: SliverList.list(
               children: [
                 Text(
-                  'Unduh file, video, atau seluruh playlist dari link mana pun.',
+                  s.homeIntro,
                   style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 16),
@@ -37,11 +39,11 @@ class HomeScreen extends StatelessWidget {
                   maxLines: 4,
                   keyboardType: TextInputType.url,
                   decoration: InputDecoration(
-                    labelText: 'Link',
-                    hintText: 'https://...  (boleh banyak, satu per baris)',
+                    labelText: s.linkLabel,
+                    hintText: s.linkHint,
                     prefixIcon: const Icon(Icons.link),
                     suffixIcon: IconButton(
-                      tooltip: 'Tempel',
+                      tooltip: s.paste,
                       icon: const Icon(Icons.content_paste),
                       onPressed: app.paste,
                     ),
@@ -50,20 +52,20 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 16),
                 SegmentedButton<FetchMode>(
                   showSelectedIcon: false,
-                  segments: const [
+                  segments: [
                     ButtonSegment(
                       value: FetchMode.auto,
-                      label: Text('Otomatis'),
+                      label: Text(s.modeAuto),
                       icon: Icon(Icons.auto_awesome),
                     ),
                     ButtonSegment(
                       value: FetchMode.single,
-                      label: Text('Single'),
+                      label: Text(s.modeSingle),
                       icon: Icon(Icons.insert_drive_file_outlined),
                     ),
                     ButtonSegment(
                       value: FetchMode.playlist,
-                      label: Text('Playlist'),
+                      label: Text(s.modePlaylist),
                       icon: Icon(Icons.video_library_outlined),
                     ),
                   ],
@@ -80,7 +82,7 @@ class HomeScreen extends StatelessWidget {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.download),
-                  label: Text(app.loading ? 'Memproses...' : 'Analisis & unduh'),
+                  label: Text(app.loading ? s.processing : s.analyzeAndDownload),
                 ),
                 if (app.message != null) ...[
                   const SizedBox(height: 12),
@@ -121,14 +123,14 @@ class HomeScreen extends StatelessWidget {
                   OutlinedButton.icon(
                     onPressed: app.openPicker,
                     icon: const Icon(Icons.checklist),
-                    label: Text('Lihat ${app.videos.length} video'),
+                    label: Text(s.viewVideos(app.videos.length)),
                   ),
                 ],
                 const SizedBox(height: 24),
                 Row(
                   children: [
                     Expanded(
-                      child: Text('Kualitas maksimum', style: tt.titleMedium),
+                      child: Text(s.maxQuality, style: tt.titleMedium),
                     ),
                     DropdownMenu<int>(
                       initialSelection: app.queue.maxQuality,
@@ -151,10 +153,10 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      Expanded(child: Text('Terakhir dipakai', style: tt.titleMedium)),
+                      Expanded(child: Text(s.recentTitle, style: tt.titleMedium)),
                       TextButton(
                         onPressed: app.clearRecent,
-                        child: const Text('Hapus'),
+                        child: Text(s.delete),
                       ),
                     ],
                   ),

@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../app_scope.dart';
+import '../l10n/app_localizations.dart';
 import '../net/dns.dart';
 import '../net/errors.dart';
 
@@ -13,6 +14,7 @@ class SettingsScreen extends StatelessWidget {
     final q = app.queue;
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final s = AppLocalizations.of(context);
     Widget section(String t) => Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
       child: Text(t, style: tt.titleSmall?.copyWith(color: cs.primary)),
@@ -20,12 +22,12 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          const SliverAppBar.large(title: Text('Pengaturan')),
+          SliverAppBar.large(title: Text(s.settingsTitle)),
           SliverList.list(
             children: [
-              section('Unduhan'),
+              section(s.settingsDownloads),
               ListTile(
-                title: const Text('Kualitas maksimum'),
+                title: Text(s.maxQuality),
                 trailing: DropdownMenu<int>(
                   initialSelection: q.maxQuality,
                   width: 130,
@@ -43,7 +45,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               ListTile(
-                title: const Text('Unduhan paralel'),
+                title: Text(s.settingsParallel),
                 subtitle: Slider(
                   value: q.concurrency.toDouble(),
                   min: 1,
@@ -58,8 +60,8 @@ class SettingsScreen extends StatelessWidget {
                 trailing: Text('${q.concurrency}', style: tt.titleMedium),
               ),
               SwitchListTile(
-                title: const Text('Hanya lewat Wi-Fi'),
-                subtitle: const Text('Jeda unduhan saat memakai data seluler'),
+                title: Text(s.settingsWifiOnly),
+                subtitle: Text(s.settingsWifiOnlySub),
                 value: q.wifiOnly,
                 onChanged: (v) {
                   q.wifiOnly = v;
@@ -68,41 +70,39 @@ class SettingsScreen extends StatelessWidget {
               ),
               ListTile(
                 leading: const Icon(Icons.folder_outlined),
-                title: const Text('Lokasi simpan'),
-                subtitle: const Text(
-                  'Movies / Music / Pictures / Download → folder BulkDL',
-                ),
+                title: Text(s.settingsSaveLocation),
+                subtitle: Text(s.settingsSaveLocationSub),
               ),
-              section('Jaringan'),
+              section(s.settingsNetwork),
               ListTile(
                 leading: const Icon(Icons.dns_outlined),
-                title: const Text('DNS'),
+                title: Text(s.settingsDns),
                 subtitle: Text(q.dnsMode.label),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _dnsDialog(context),
               ),
               ListTile(
                 leading: const Icon(Icons.cookie_outlined),
-                title: const Text('Cookie login per situs'),
+                title: Text(s.settingsCookies),
                 subtitle: Text(
                   q.scraper.cookies.isEmpty
-                      ? 'Belum ada'
+                      ? s.settingsCookiesNone
                       : q.scraper.cookies.keys.join(', '),
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _cookieDialog(context),
               ),
-              section('Tampilan'),
+              section(s.settingsAppearance),
               ListTile(
-                title: const Text('Tema'),
+                title: Text(s.settingsTheme),
                 subtitle: Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: SegmentedButton<ThemeMode>(
                     showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(value: ThemeMode.system, label: Text('Sistem')),
-                      ButtonSegment(value: ThemeMode.light, label: Text('Terang')),
-                      ButtonSegment(value: ThemeMode.dark, label: Text('Gelap')),
+                    segments: [
+                      ButtonSegment(value: ThemeMode.system, label: Text(s.themeSystem)),
+                      ButtonSegment(value: ThemeMode.light, label: Text(s.themeLight)),
+                      ButtonSegment(value: ThemeMode.dark, label: Text(s.themeDark)),
                     ],
                     selected: {app.themeMode},
                     onSelectionChanged: (s) => app.setThemeMode(s.first),
@@ -110,20 +110,35 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               SwitchListTile(
-                title: const Text('Warna dinamis'),
-                subtitle: const Text(
-                  'Ikuti warna wallpaper (Android 12+). Mati = hijau bawaan',
-                ),
+                title: Text(s.settingsDynamic),
+                subtitle: Text(s.settingsDynamicSub),
                 value: app.dynamicColor,
                 onChanged: app.setDynamicColor,
               ),
-              section('Tentang'),
-              const ListTile(
-                leading: Icon(Icons.info_outline),
-                title: Text('Bulk DL'),
-                subtitle: Text(
-                  'Unduh hanya konten yang kamu berhak simpan. Kamu bertanggung jawab atas penggunaan dan hak cipta.',
+              ListTile(
+                leading: const Icon(Icons.language),
+                title: Text(s.settingsLanguage),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: SegmentedButton<String>(
+                    showSelectedIcon: false,
+                    segments: [
+                      ButtonSegment(value: '', label: Text(s.langSystem)),
+                      ButtonSegment(value: 'en', label: Text(s.langEnglish)),
+                      ButtonSegment(value: 'id', label: Text(s.langIndonesian)),
+                    ],
+                    selected: {app.locale?.languageCode ?? ''},
+                    onSelectionChanged: (v) => app.setLocale(
+                      v.first.isEmpty ? null : Locale(v.first),
+                    ),
+                  ),
                 ),
+              ),
+              section(s.settingsAbout),
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: Text(s.appTitle),
+                subtitle: Text(s.aboutText),
               ),
               const SizedBox(height: 24),
             ],
@@ -136,6 +151,7 @@ class SettingsScreen extends StatelessWidget {
 
 Future<void> _dnsDialog(BuildContext context) async {
   final app = AppScope.read(context);
+  final s = AppLocalizations.of(context);
   var mode = app.queue.dnsMode;
   final ctl = TextEditingController(text: app.queue.dnsCustom);
   String? result;
@@ -144,14 +160,14 @@ Future<void> _dnsDialog(BuildContext context) async {
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setS) => AlertDialog(
-        title: const Text('DNS'),
+        title: Text(s.settingsDns),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'DNS-over-HTTPS membantu saat ISP memblokir situs lewat DNS. Tidak bisa menembus blokir IP/SNI.',
+                s.dnsHelp,
                 style: Theme.of(ctx).textTheme.bodySmall,
               ),
               const SizedBox(height: 8),
@@ -193,28 +209,28 @@ Future<void> _dnsDialog(BuildContext context) async {
                 : () async {
                     setS(() {
                       testing = true;
-                      result = 'Menguji...';
+                      result = s.dnsTesting;
                     });
                     final r = DnsResolver()
                       ..mode = mode
                       ..custom = ctl.text.trim();
                     try {
                       final ips = await r.resolve('example.com');
-                      result = 'OK lewat ${r.lastProvider}: ${ips.first}';
+                      result = s.dnsOk(r.lastProvider ?? '', ips.first.toString());
                     } catch (e) {
-                      result = 'Gagal: ${friendlyError(e)}';
+                      result = s.dnsFailed(friendlyError(e));
                     }
                     setS(() => testing = false);
                   },
-            child: const Text('Tes'),
+            child: Text(s.test),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: Text(s.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Simpan'),
+            child: Text(s.save),
           ),
         ],
       ),
@@ -228,6 +244,7 @@ Future<void> _dnsDialog(BuildContext context) async {
 
 Future<void> _cookieDialog(BuildContext context) async {
   final app = AppScope.read(context);
+  final s = AppLocalizations.of(context);
   final q = app.queue;
   final first = Uri.tryParse(app.urlCtl.text.trim())?.host ?? '';
   final host = TextEditingController(text: first);
@@ -236,20 +253,20 @@ Future<void> _cookieDialog(BuildContext context) async {
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setS) => AlertDialog(
-        title: const Text('Cookie login'),
+        title: Text(s.cookieTitle),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Tempel header Cookie dari browser yang sudah login agar link HD terbuka. Disimpan hanya di perangkat ini dan hanya dikirim ke situs itu sendiri.',
+                s.cookieHelp,
                 style: Theme.of(ctx).textTheme.bodySmall,
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: host,
-                decoration: const InputDecoration(labelText: 'Host (mis. www.situs.com)'),
+                decoration: InputDecoration(labelText: s.cookieHost),
                 onChanged: (v) => setS(() {
                   cookie.text = q.scraper.cookies[v.trim()] ?? '';
                 }),
@@ -258,8 +275,8 @@ Future<void> _cookieDialog(BuildContext context) async {
               TextField(
                 controller: cookie,
                 maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Cookie',
+                decoration: InputDecoration(
+                  labelText: s.cookieLabel,
                   hintText: 'name=value; name2=value2',
                 ),
               ),
@@ -285,18 +302,18 @@ Future<void> _cookieDialog(BuildContext context) async {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: Text(s.cancel),
           ),
           TextButton(
             onPressed: () {
               cookie.clear();
               Navigator.pop(ctx, true);
             },
-            child: const Text('Hapus'),
+            child: Text(s.delete),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Simpan'),
+            child: Text(s.save),
           ),
         ],
       ),

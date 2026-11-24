@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../app_scope.dart';
+import '../l10n/app_localizations.dart';
 import '../queue.dart';
 import '../widgets/task_tile.dart';
 
@@ -14,6 +15,7 @@ class QueueScreen extends StatelessWidget {
     return ListenableBuilder(
       listenable: q,
       builder: (context, _) {
+        final s = AppLocalizations.of(context);
         final cs = Theme.of(context).colorScheme;
         final st = q.stats();
         final busy = st.active + st.waiting > 0;
@@ -21,14 +23,14 @@ class QueueScreen extends StatelessWidget {
           body: CustomScrollView(
             slivers: [
               SliverAppBar.large(
-                title: const Text('Antrean'),
+                title: Text(s.queueTitle),
                 actions: [
                   PopupMenuButton<String>(
                     onSelected: (v) {
                       if (v == 'clear') q.clearFinished();
                     },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'clear', child: Text('Bersihkan yang selesai')),
+                    itemBuilder: (_) => [
+                      PopupMenuItem(value: 'clear', child: Text(s.queueClearFinished)),
                     ],
                   ),
                 ],
@@ -48,7 +50,7 @@ class QueueScreen extends StatelessWidget {
                         Icon(Icons.inbox_outlined, size: 64, color: cs.outline),
                         const SizedBox(height: 12),
                         Text(
-                          'Antrean kosong',
+                          s.queueEmpty,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                       ],
@@ -69,7 +71,7 @@ class QueueScreen extends StatelessWidget {
           floatingActionButton: FloatingActionButton.extended(
             onPressed: () => app.tab.value = 0,
             icon: const Icon(Icons.add_link),
-            label: const Text('Tambah'),
+            label: Text(s.queueAdd),
           ),
         );
       },
@@ -86,6 +88,7 @@ class _Summary extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final s = AppLocalizations.of(context);
     return Card(
       color: cs.primaryContainer,
       child: Padding(
@@ -124,14 +127,14 @@ class _Summary extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '${st.active} mengunduh · ${st.waiting} menunggu',
+              s.queueCounts(st.active, st.waiting),
               style: tt.bodyMedium?.copyWith(color: cs.onPrimaryContainer),
             ),
             if (paused)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'Dijeda: menunggu Wi-Fi',
+                  s.queuePausedWifi,
                   style: tt.labelLarge?.copyWith(color: cs.error),
                 ),
               ),

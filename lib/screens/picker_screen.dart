@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../app_scope.dart';
+import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../widgets/thumb.dart';
 
@@ -13,15 +14,16 @@ class PickerScreen extends StatelessWidget {
     final app = AppScope.of(context);
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final s = AppLocalizations.of(context);
     final items = app.visible;
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverAppBar.large(
-            title: Text('${app.videos.length} video'),
+            title: Text(s.msgVideoCount(app.videos.length)),
             actions: [
               IconButton(
-                tooltip: 'Hitung ukuran',
+                tooltip: s.pickerCalcSizes,
                 icon: const Icon(Icons.calculate_outlined),
                 onPressed: app.calcSizes,
               ),
@@ -35,7 +37,7 @@ class PickerScreen extends StatelessWidget {
                   controller: app.searchCtl,
                   onChanged: app.setFilter,
                   decoration: InputDecoration(
-                    hintText: 'Cari judul',
+                    hintText: s.pickerSearch,
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: app.filter.isEmpty
                         ? null
@@ -53,16 +55,16 @@ class PickerScreen extends StatelessWidget {
                   children: [
                     FilledButton.tonal(
                       onPressed: app.selectAll,
-                      child: const Text('Semua'),
+                      child: Text(s.pickerAll),
                     ),
                     const SizedBox(width: 8),
                     OutlinedButton(
                       onPressed: app.selectNone,
-                      child: const Text('Tidak ada'),
+                      child: Text(s.pickerNone),
                     ),
                     const Spacer(),
                     Text(
-                      '${app.selected.length} dipilih',
+                      s.pickerSelected(app.selected.length),
                       style: tt.labelLarge?.copyWith(color: cs.onSurfaceVariant),
                     ),
                   ],
@@ -147,7 +149,7 @@ class _Row extends StatelessWidget {
                                 size: 16,
                                 color: cs.onPrimaryContainer,
                               ),
-                              label: const Text('Sudah diunduh'),
+                              label: Text(AppLocalizations.of(context).alreadyDownloaded),
                               backgroundColor: cs.primaryContainer,
                               labelStyle: TextStyle(color: cs.onPrimaryContainer),
                               visualDensity: VisualDensity.compact,

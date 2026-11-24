@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../l10n/app_localizations.dart';
 import '../queue.dart';
 
 String _ql(int? q) => (q == null || q == 0) ? '' : ' · ${q}p';
@@ -13,15 +14,16 @@ class TaskTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final s = AppLocalizations.of(context);
     return ListenableBuilder(
       listenable: t,
       builder: (context, _) {
         final active =
             t.status == Status.downloading || t.status == Status.resolving;
         final (label, color, icon) = switch (t.status) {
-          Status.waiting => ('Menunggu', cs.onSurfaceVariant, Icons.schedule),
+          Status.waiting => (s.taskWaiting, cs.onSurfaceVariant, Icons.schedule),
           Status.resolving => (
-            'Menyiapkan...',
+            s.taskPreparing,
             cs.onSurfaceVariant,
             Icons.hourglass_top,
           ),
@@ -31,9 +33,9 @@ class TaskTile extends StatelessWidget {
             cs.primary,
             Icons.downloading,
           ),
-          Status.done => ('Selesai${_ql(t.quality)}', cs.primary, Icons.check_circle),
-          Status.failed => ('Gagal: ${t.error ?? ''}', cs.error, Icons.error),
-          Status.canceled => ('Dibatalkan', cs.tertiary, Icons.pause_circle),
+          Status.done => ('${s.taskDone}${_ql(t.quality)}', cs.primary, Icons.check_circle),
+          Status.failed => (s.taskFailed(t.error ?? ''), cs.error, Icons.error),
+          Status.canceled => (s.taskCanceled, cs.tertiary, Icons.pause_circle),
         };
         return Card(
           child: Padding(
@@ -84,14 +86,14 @@ class TaskTile extends StatelessWidget {
                 const SizedBox(width: 4),
                 if (active || t.status == Status.waiting)
                   IconButton(
-                    tooltip: 'Batalkan',
+                    tooltip: s.taskCancel,
                     icon: const Icon(Icons.close),
                     onPressed: () => q.cancel(t),
                   )
                 else if (t.status == Status.failed ||
                     t.status == Status.canceled)
                   IconButton.filledTonal(
-                    tooltip: 'Coba lagi',
+                    tooltip: s.taskRetry,
                     icon: const Icon(Icons.refresh),
                     onPressed: () => q.retry(t),
                   )
@@ -100,12 +102,12 @@ class TaskTile extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton.filled(
-                        tooltip: 'Buka',
+                        tooltip: s.taskOpen,
                         icon: const Icon(Icons.play_arrow),
                         onPressed: () => q.lib.open(t.file!),
                       ),
                       IconButton(
-                        tooltip: 'Bagikan',
+                        tooltip: s.taskShare,
                         icon: const Icon(Icons.share),
                         onPressed: () => q.lib.share(t.file!),
                       ),

@@ -1,8 +1,11 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'bg.dart';
+import 'l10n/app_localizations.dart';
 import 'net/errors.dart';
 import 'queue.dart';
 import 'scraper.dart';
@@ -46,6 +49,7 @@ class AppState extends ChangeNotifier {
   // --- appearance / onboarding ---
   ThemeMode themeMode = ThemeMode.system;
   bool dynamicColor = false; // green by default; wallpaper colours are opt-in
+  Locale? locale; // null = follow system
   bool disclaimerSeen = true;
   String? savePath;
 
@@ -75,6 +79,8 @@ class AppState extends ChangeNotifier {
         orElse: () => ThemeMode.system,
       );
       dynamicColor = p.getBool('s_dyn') ?? false;
+      final lang = p.getString('s_lang');
+      locale = (lang == null || lang.isEmpty) ? null : Locale(lang);
       recent = p.getStringList('s_recent') ?? [];
       disclaimerSeen = p.getBool('s_disclaimer') ?? false;
     } catch (_) {}
@@ -99,6 +105,18 @@ class AppState extends ChangeNotifier {
     dynamicColor = v;
     _savePref('s_dyn', v);
     notifyListeners();
+  }
+
+  void setLocale(Locale? l) {
+    locale = l;
+    _savePref('s_lang', l?.languageCode ?? '');
+    notifyListeners();
+  }
+
+  /// Strings for code that has no BuildContext (status messages, notifications).
+  AppLocalizations get str {
+    final code = (locale ?? PlatformDispatcher.instance.locale).languageCode;
+    return lookupAppLocalizations(Locale(code == 'id' ? 'id' : 'en'));
   }
 
   void acceptDisclaimer() {
@@ -155,14 +173,14 @@ class AppState extends ChangeNotifier {
   Future<FetchResult> fetch() async {
     final urls = extractUrls(urlCtl.text);
     if (urls.isEmpty) {
-      message = 'Tempel link yang diawali http:// atau https://';
+      message = str.msgPasteLink;
       messageIsError = true;
       notifyListeners();
       return FetchResult.nothing;
     }
     queue.rememberUrl(urls.join(' '));
     loading = true;
-    message = 'Menganalisis ${urls.length} link...';
+    message = str.msgAnalyzing(urls.length);
     messageIsError = false;
     videos = [];
     searchCtl.clear();
@@ -179,7 +197,7 @@ class AppState extends ChangeNotifier {
           final c = await scraper.classify(url);
           final isList = c.kind == UrlKind.playlist;
           if (isList && mode == FetchMode.single) {
-            throw 'Link ini playlist — pilih mode Otomatis atau Playlist';
+            throw str.msgIsPlaylist;
           }
           if (isList) {
             list.addAll(
@@ -187,7 +205,7 @@ class AppState extends ChangeNotifier {
                 c.uri,
                 scraper.http,
                 onProgress: (n) {
-                  message = '${list.length + n} video ditemukan...';
+                  message = str.msgFound(list.length + n);
                   notifyListeners();
                 },
               ),
@@ -206,11 +224,11 @@ class AppState extends ChangeNotifier {
       selected.addAll(list.where((e) => !isDownloaded(e)).map((e) => e.id));
       _remember(urls);
       final parts = <String>[
-        if (list.isNotEmpty) '${list.length} video',
-        if (singles.isNotEmpty) '${singles.length} masuk antrean',
+        if (list.isNotEmpty) str.msgVideoCount(list.length),
+        if (singles.isNotEmpty) str.msgQueued(singles.length),
         if (errors.isNotEmpty) errors.first,
       ];
-      message = parts.isEmpty ? 'Tidak ada yang ditemukan' : parts.join(' · ');
+      message = parts.isEmpty ? str.msgNothingFound : parts.join(' · ');
       messageIsError = errors.isNotEmpty && list.isEmpty && singles.isEmpty;
       if (list.isNotEmpty) return FetchResult.picker;
       if (singles.isNotEmpty) {
@@ -282,10 +300,10 @@ class AppState extends ChangeNotifier {
   String sizeLabel(VideoItem v) {
     final l = scraper.done[v.id];
     if (l == null) {
-      return scraper.failed.contains(v.id) ? 'ukuran tidak diketahui' : '...';
+      return scraper.failed.contains(v.id) ? str.sizeUnknown : '...';
     }
     final p = Scraper.pick(l, queue.maxQuality);
-    if (p == null) return 'tidak ada link';
+    if (p == null) return str.noLink;
     final q = p.quality > 0 ? '${p.quality}p' : p.ext;
     return p.mb == null ? q : '$q · ${formatSize(p.mb!)}';
   }
@@ -297,9 +315,14 @@ class AppState extends ChangeNotifier {
       final s = sizeOf(v);
       s == null ? unknown++ : total += s;
     }
-    final size = total > 0 ? ' · ${formatSize(total)}' : '';
-    final unk = unknown > 0 ? ' (+$unknown ?)' : '';
-    return 'Unduh ${selected.length}$size$unk';
+    final n = selected.length;
+    if (total > 0) {
+      final size = formatSize(total);
+      return unknown > 0
+          ? str.downloadNSizeUnknown(n, size, unknown)
+          : str.downloadNSize(n, size);
+    }
+    return unknown > 0 ? str.downloadNUnknown(n, unknown) : str.downloadN(n);
   }
 
   /// Adds the selection to the queue and shows it.
@@ -315,8 +338,12 @@ class AppState extends ChangeNotifier {
     final spd = st.speed > 0 ? ' · ${formatSpeed(st.speed)}' : '';
     BgService.sync(
       active: queue.tasks.where((t) => t.busy).length + st.waiting,
-      text:
-          '${st.active} mengunduh, ${st.waiting} menunggu · ${(st.fraction * 100).toStringAsFixed(0)}%$spd$eta',
+      text: str.bgStatus(
+        st.active,
+        st.waiting,
+        (st.fraction * 100).toStringAsFixed(0),
+        '$spd$eta',
+      ),
     );
   }
 

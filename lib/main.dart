@@ -1,9 +1,11 @@
+import 'package:flutter_localizations/flutter_localizations.dart' show GlobalWidgetsLocalizations;
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'app_scope.dart';
 import 'app_state.dart';
 import 'bg.dart';
+import 'l10n/app_localizations.dart';
 import 'queue.dart';
 import 'screens/home_screen.dart';
 import 'screens/queue_screen.dart';
@@ -50,7 +52,14 @@ class _AppState extends State<App> {
                 ? dyn.harmonized()
                 : greenScheme(b);
             return MaterialApp(
-              title: 'Bulk DL',
+              onGenerateTitle: (ctx) => AppLocalizations.of(ctx).appTitle,
+              locale: state.locale,
+              localizationsDelegates: const [
+                AppLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+              ],
+              supportedLocales: AppLocalizations.supportedLocales,
               debugShowCheckedModeBanner: false,
               navigatorKey: state.navKey,
               scaffoldMessengerKey: state.messengerKey,
@@ -78,22 +87,21 @@ class _ShellState extends State<Shell> {
   Future<void> _maybeDisclaimer(AppState app) async {
     if (_asked || app.disclaimerSeen) return;
     _asked = true;
+    final s = AppLocalizations.of(context);
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.gavel_outlined),
-        title: const Text('Sebelum mulai'),
-        content: const Text(
-          'Bulk DL hanya alat pengunduh. Unduh hanya konten yang kamu berhak simpan, dan patuhi hukum serta ketentuan situs. Kamu bertanggung jawab atas penggunaan dan hak cipta. Konten berDRM tidak didukung.',
-        ),
+        title: Text(s.disclaimerTitle),
+        content: Text(s.disclaimerBody),
         actions: [
           FilledButton(
             onPressed: () {
               app.acceptDisclaimer();
               Navigator.pop(ctx);
             },
-            child: const Text('Mengerti'),
+            child: Text(s.disclaimerOk),
           ),
         ],
       ),
@@ -103,6 +111,7 @@ class _ShellState extends State<Shell> {
   @override
   Widget build(BuildContext context) {
     final app = AppScope.of(context);
+    final s = AppLocalizations.of(context);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _maybeDisclaimer(app);
     });
@@ -128,10 +137,10 @@ class _ShellState extends State<Shell> {
               selectedIndex: i,
               onDestinationSelected: (v) => app.tab.value = v,
               destinations: [
-                const NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home),
-                  label: 'Beranda',
+                NavigationDestination(
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home),
+                  label: s.navHome,
                 ),
                 NavigationDestination(
                   icon: Badge(
@@ -144,12 +153,12 @@ class _ShellState extends State<Shell> {
                     label: Text('$active'),
                     child: const Icon(Icons.download),
                   ),
-                  label: 'Antrean',
+                  label: s.navQueue,
                 ),
-                const NavigationDestination(
-                  icon: Icon(Icons.settings_outlined),
-                  selectedIcon: Icon(Icons.settings),
-                  label: 'Pengaturan',
+                NavigationDestination(
+                  icon: const Icon(Icons.settings_outlined),
+                  selectedIcon: const Icon(Icons.settings),
+                  label: s.navSettings,
                 ),
               ],
             );

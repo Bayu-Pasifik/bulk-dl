@@ -134,7 +134,7 @@ Dikerjakan setelah Fase 1 (butuh satu titik pembuatan `Dio`), bisa paralel denga
   di `shared_preferences`.
 - [x] T6.8 Bersihkan lint (`flutter analyze` bersih), naikkan ke v1.5.0, update
   README.
-- [ ] T6.9 Tes widget/integrasi (saat ini hanya tes unit logika).
+- [x] T6.9 Tes widget layar antrean (`test/queue_screen_test.dart`). Tes integrasi di perangkat belum ada.
 - [x] T6.10 Pindah `actions/setup-java` ke v5 di workflow rilis (v4 deprecated).
 
 ## Urutan dan ketergantungan

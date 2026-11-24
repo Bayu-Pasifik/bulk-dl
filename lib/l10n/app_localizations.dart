@@ -326,6 +326,24 @@ abstract class AppLocalizations {
   /// **'Calculate size'**
   String get pickerCalcSizes;
 
+  /// No description provided for @pickerSizeProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading sizes {done}/{total}'**
+  String pickerSizeProgress(int done, int total);
+
+  /// No description provided for @pickerEstimate.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated total ≈ {size}'**
+  String pickerEstimate(String size);
+
+  /// No description provided for @pickerCalcAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculate sizes'**
+  String get pickerCalcAll;
+
   /// No description provided for @pickerSearch.
   ///
   /// In en, this message translates to:

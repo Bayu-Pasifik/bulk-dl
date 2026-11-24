@@ -147,6 +147,19 @@ class AppLocalizationsId extends AppLocalizations {
   String get pickerCalcSizes => 'Hitung ukuran';
 
   @override
+  String pickerSizeProgress(int done, int total) {
+    return 'Menghitung ukuran $done/$total';
+  }
+
+  @override
+  String pickerEstimate(String size) {
+    return 'Perkiraan total ≈ $size';
+  }
+
+  @override
+  String get pickerCalcAll => 'Hitung ukuran';
+
+  @override
   String get pickerSearch => 'Cari judul';
 
   @override

@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../app_scope.dart';
+import '../app_state.dart';
 import '../l10n/app_localizations.dart';
 import '../models.dart';
 import '../widgets/thumb.dart';
@@ -72,6 +73,10 @@ class PickerScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
+                ListenableBuilder(
+                  listenable: app.scraper,
+                  builder: (_, _) => _SizeInfo(app),
+                ),
               ],
             ),
           ),
@@ -170,6 +175,56 @@ class _Row extends StatelessWidget {
               Checkbox(value: on, onChanged: (_) => app.toggle(v)),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Size status for the selection: progress while loading, an estimate of the
+/// total for sizes not loaded yet, and a button to load them all.
+class _SizeInfo extends StatelessWidget {
+  const _SizeInfo(this.app);
+  final AppState app;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final (known, all) = app.sizeProgress;
+    final est = app.estimatedTotal;
+    if (all == 0 || (known == all && !app.sizesLoading)) {
+      return const SizedBox.shrink();
+    }
+    final text = s.pickerSizeProgress(known, all);
+    return Card(
+      color: cs.surfaceContainerHigh,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    est == null
+                        ? text
+                        : '$text\n${s.pickerEstimate(formatSize(est))}',
+                  ),
+                ),
+                if (!app.sizesLoading)
+                  FilledButton.tonal(
+                    onPressed: app.calcSizes,
+                    child: Text(s.pickerCalcAll),
+                  ),
+              ],
+            ),
+            if (app.sizesLoading) ...[
+              const SizedBox(height: 8),
+              LinearProgressIndicator(value: all == 0 ? null : known / all),
+            ],
+          ],
         ),
       ),
     );

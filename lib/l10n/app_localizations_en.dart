@@ -147,6 +147,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pickerCalcSizes => 'Calculate size';
 
   @override
+  String pickerSizeProgress(int done, int total) {
+    return 'Loading sizes $done/$total';
+  }
+
+  @override
+  String pickerEstimate(String size) {
+    return 'Estimated total ≈ $size';
+  }
+
+  @override
+  String get pickerCalcAll => 'Calculate sizes';
+
+  @override
   String get pickerSearch => 'Search title';
 
   @override

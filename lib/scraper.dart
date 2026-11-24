@@ -70,6 +70,7 @@ class Scraper extends ChangeNotifier {
   final Map<String, List<DownloadLink>> done = {};
   final Set<String> failed = {};
   final Map<String, Future<List<DownloadLink>>> _pending = {};
+  int get pendingCount => _pending.length;
   static const _maxParallel = 3;
   int _running = 0;
   final _waiters = <Completer<void>>[];

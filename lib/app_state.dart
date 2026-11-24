@@ -315,6 +315,27 @@ class AppState extends ChangeNotifier {
     return p.mb == null ? q : '$q · ${formatSize(p.mb!)}';
   }
 
+  /// (sizes known, selected) for the current selection.
+  (int, int) get sizeProgress {
+    final sel = videos.where((v) => selected.contains(v.id));
+    return (sel.where((v) => sizeOf(v) != null).length, sel.length);
+  }
+
+  /// Extrapolates the total from the average of known sizes; null when
+  /// nothing is known yet or everything is already known.
+  double? get estimatedTotal {
+    final (known, all) = sizeProgress;
+    if (known == 0 || known == all) return null;
+    var sum = 0.0;
+    for (final v in videos.where((v) => selected.contains(v.id))) {
+      sum += sizeOf(v) ?? 0;
+    }
+    return sum / known * all;
+  }
+
+  /// True while size lookups are still running.
+  bool get sizesLoading => scraper.pendingCount > 0;
+
   String totalLabel() {
     var total = 0.0;
     var unknown = 0;

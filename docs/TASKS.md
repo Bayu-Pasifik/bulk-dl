@@ -59,7 +59,7 @@ Legenda: `[ ]` belum · `[~]` jalan · `[x]` selesai · **(F#)** = kebutuhan di 
   AES-128 bila kunci ada di manifest; tolak DRM dengan pesan jelas.
 - [x] T3.4 Pesan error spesifik dan tombol salin log untuk "tidak ada media"
   (F9).
-- [ ] T3.5 Tambah minimal 2 extractor situs spesifik selain Eporner setelah
+- [x] T3.5 Tambah minimal 2 extractor situs spesifik selain Eporner setelah
   pengguna menentukan daftar situs (lihat pertanyaan terbuka PRD).
 - [x] T3.6 Tes tiap extractor dengan fixture HTML/m3u8 (N6).
 
@@ -156,8 +156,8 @@ F2+F3+F3B+F4 → F5 → F6
 
 ## Catatan status
 
-- T3.5 sebagian: Mitaku sudah ditambah (T6.1); sisanya menunggu daftar situs prioritas dari pengguna. Situs lain sudah
-  ditangani oleh `GenericHtmlExtractor`.
+- T3.5 selesai: extractor situs spesifik ada di `lib/extractors/` (Eporner, Mitaku, xvideos/xnxx,
+  pornhub/redtube/youporn/tube8, KVS, xhamster, tnaflix, pornone). Situs lain ditangani `GenericHtmlExtractor`.
 - T5.5 sebagian: diuji di emulator Android 17 (API 37) saja; Android 8 dan 12
   belum diuji.
 - Quad9 dari rencana awal diganti DNS.SB: endpoint JSON Quad9 mensyaratkan

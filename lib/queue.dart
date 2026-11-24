@@ -598,6 +598,7 @@ class DownloadQueue extends ChangeNotifier {
         t.update(s: Status.downloading, p: total > 0 ? received / total : 0);
         final sink = File(part)
             .openWrite(mode: offset > 0 ? FileMode.append : FileMode.write);
+        final sw = Stopwatch()..start();
         try {
           await for (final chunk in body.stream) {
             sink.add(chunk);
@@ -607,6 +608,12 @@ class DownloadQueue extends ChangeNotifier {
           }
         } finally {
           await sink.close();
+          final secs = sw.elapsedMilliseconds / 1000;
+          final mb = (received - offset) / 1048576;
+          debugPrint('SPEED ${mb.toStringAsFixed(1)}MB in '
+              '${secs.toStringAsFixed(1)}s = '
+              '${(mb / (secs > 0 ? secs : 1)).toStringAsFixed(2)}MB/s '
+              '${link.quality} ${Uri.parse(link.url).host}');
         }
         if (total > 0 && received != total) {
           t.transient = true;

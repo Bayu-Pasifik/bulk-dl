@@ -76,6 +76,27 @@ class SettingsScreen extends StatelessWidget {
                 trailing: Text('${q.concurrency}', style: tt.titleMedium),
               ),
               ListTile(
+                title: Text(s.settingsConnections),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(s.settingsConnectionsSub),
+                    Slider(
+                      value: q.connections.toDouble(),
+                      min: 1,
+                      max: 64,
+                      divisions: 63,
+                      label: '${q.connections}',
+                      onChanged: (v) {
+                        q.connections = v.round();
+                        app.refresh();
+                      },
+                    ),
+                  ],
+                ),
+                trailing: Text('${q.connections}', style: tt.titleMedium),
+              ),
+              ListTile(
                 title: Text(s.settingsMaxPages),
                 subtitle: Text(s.settingsMaxPagesSub),
                 trailing: DropdownMenu<int>(

@@ -222,6 +222,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsParallel => 'Parallel downloads';
 
   @override
+  String get settingsConnections => 'Connections per download';
+
+  @override
+  String get settingsConnectionsSub =>
+      'More connections can be faster, but some sites answer error 429. Lower it if that happens.';
+
+  @override
   String get settingsMaxPages => 'Playlist pages to scan';
 
   @override

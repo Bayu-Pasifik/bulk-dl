@@ -61,6 +61,8 @@
   "settingsTitle": "Pengaturan",
   "settingsDownloads": "Unduhan",
   "settingsParallel": "Unduhan paralel",
+  "settingsConnections": "Koneksi per unduhan",
+  "settingsConnectionsSub": "Koneksi lebih banyak bisa lebih cepat, tapi beberapa situs membalas error 429. Turunkan jika itu terjadi.",
   "settingsMaxPages": "Halaman playlist yang dipindai",
   "settingsMaxPagesSub": "Batasi jumlah halaman daftar yang dibaca per link playlist",
   "settingsWifiOnly": "Hanya lewat Wi-Fi",

@@ -5,9 +5,9 @@ import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-/// Max simultaneous connections for one download. Starts here, halves on
+/// Upper bound for the user setting. Each download starts at that setting and halves on
 /// HTTP 429/503 (rate limit) so hosts that throttle do not fail the download.
-const kMaxConnections = 16;
+const kMaxConnections = 64;
 
 /// The server did not honour HTTP Range; caller falls back to one stream.
 class RangeUnsupported implements Exception {

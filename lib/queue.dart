@@ -96,6 +96,7 @@ class DownloadQueue extends ChangeNotifier {
   final List<Task> tasks = [];
   int _maxQuality = 720; // 1080p+ needs a login on the site
   int _concurrency = 2;
+  int _connections = 16; // parallel connections per download (1-64)
 
   int _maxPages = 10; // listing pages scanned per playlist link
 
@@ -118,6 +119,12 @@ class DownloadQueue extends ChangeNotifier {
     _pump();
   }
 
+  int get connections => _connections;
+  set connections(int v) {
+    _connections = v.clamp(1, kMaxConnections);
+    _saveSettings();
+  }
+
   String lastUrl = '';
 
   Future<void> loadSettings() async {
@@ -125,6 +132,7 @@ class DownloadQueue extends ChangeNotifier {
       final p = await SharedPreferences.getInstance();
       _maxQuality = p.getInt('s_quality') ?? _maxQuality;
       _concurrency = p.getInt('s_parallel') ?? _concurrency;
+      _connections = (p.getInt('s_conns') ?? _connections).clamp(1, kMaxConnections);
       _maxPages = p.getInt('s_pages') ?? _maxPages;
       _wifiOnly = p.getBool('s_wifi') ?? _wifiOnly;
       lastUrl = p.getString('s_url') ?? '';
@@ -234,6 +242,7 @@ class DownloadQueue extends ChangeNotifier {
       final p = await SharedPreferences.getInstance();
       await p.setInt('s_quality', _maxQuality);
       await p.setInt('s_parallel', _concurrency);
+      await p.setInt('s_conns', _connections);
       await p.setInt('s_pages', _maxPages);
       await p.setBool('s_wifi', _wifiOnly);
       await p.setString('s_url', lastUrl);
@@ -585,6 +594,7 @@ class DownloadQueue extends ChangeNotifier {
           link.url,
           File(part),
           token: token,
+          parallel: _connections,
           onProgress: (done, total, bytes) {
             t.sample(bytes);
             t.update(p: done / total);
@@ -617,6 +627,7 @@ class DownloadQueue extends ChangeNotifier {
                 File(part),
                 total,
                 token: token,
+                connections: _connections,
                 onProgress: (n) {
                   received = n;
                   t.sample(n);

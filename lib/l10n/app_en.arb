@@ -74,6 +74,8 @@
   "settingsTitle": "Settings",
   "settingsDownloads": "Downloads",
   "settingsParallel": "Parallel downloads",
+  "settingsConnections": "Connections per download",
+  "settingsConnectionsSub": "More connections can be faster, but some sites answer error 429. Lower it if that happens.",
   "settingsMaxPages": "Playlist pages to scan",
   "settingsMaxPagesSub": "Limits how many listing pages are read per playlist link",
   "settingsWifiOnly": "Wi-Fi only",

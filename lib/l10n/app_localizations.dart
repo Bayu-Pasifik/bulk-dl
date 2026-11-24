@@ -464,6 +464,18 @@ abstract class AppLocalizations {
   /// **'Parallel downloads'**
   String get settingsParallel;
 
+  /// No description provided for @settingsConnections.
+  ///
+  /// In en, this message translates to:
+  /// **'Connections per download'**
+  String get settingsConnections;
+
+  /// No description provided for @settingsConnectionsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'More connections can be faster, but some sites answer error 429. Lower it if that happens.'**
+  String get settingsConnectionsSub;
+
   /// No description provided for @settingsMaxPages.
   ///
   /// In en, this message translates to:

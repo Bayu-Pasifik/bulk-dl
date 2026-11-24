@@ -222,6 +222,13 @@ class AppLocalizationsId extends AppLocalizations {
   String get settingsParallel => 'Unduhan paralel';
 
   @override
+  String get settingsConnections => 'Koneksi per unduhan';
+
+  @override
+  String get settingsConnectionsSub =>
+      'Koneksi lebih banyak bisa lebih cepat, tapi beberapa situs membalas error 429. Turunkan jika itu terjadi.';
+
+  @override
   String get settingsMaxPages => 'Halaman playlist yang dipindai';
 
   @override

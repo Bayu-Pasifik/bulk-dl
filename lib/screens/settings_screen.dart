@@ -9,6 +9,7 @@ import '../net/errors.dart';
 import '../net/http_factory.dart';
 import '../net/proxy.dart';
 import '../net/vpn.dart';
+import '../update.dart';
 import 'sites_screen.dart';
 
 part 'network_dialogs.dart';
@@ -235,6 +236,16 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               ListTile(
+                leading: const Icon(Icons.system_update_alt),
+                title: Text(s.updateCheck),
+                subtitle: FutureBuilder<String>(
+                  future: Updater.currentVersion(),
+                  builder: (_, v) => Text(s.updateVersion(v.data ?? '')),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _checkUpdate(context),
+              ),
+              ListTile(
                 leading: const Icon(Icons.info_outline),
                 title: Text(s.appTitle),
                 subtitle: Text(s.aboutText),
@@ -418,5 +429,49 @@ Future<void> _cookieDialog(BuildContext context) async {
   if (saved == true && host.text.trim().isNotEmpty) {
     await q.setCookie(host.text.trim(), cookie.text);
     app.refresh();
+  }
+}
+
+Future<void> _checkUpdate(BuildContext context) async {
+  final app = AppScope.read(context);
+  final s = AppLocalizations.of(context);
+  final msg = ScaffoldMessenger.of(context);
+  msg.showSnackBar(
+    SnackBar(
+      content: Text(s.updateChecking),
+      duration: const Duration(minutes: 1),
+    ),
+  );
+  try {
+    final u = await Updater.check(app.scraper.dio);
+    msg.hideCurrentSnackBar();
+    if (u == null) {
+      msg.showSnackBar(SnackBar(content: Text(s.updateUpToDate)));
+      return;
+    }
+    if (!context.mounted) return;
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.updateAvailable(u.version)),
+        content: u.notes.isEmpty
+            ? null
+            : SingleChildScrollView(child: Text(u.notes)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.updateLater),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(s.updateDownload),
+          ),
+        ],
+      ),
+    );
+    if (go == true) await Updater.openUrl(u.url);
+  } catch (e) {
+    msg.hideCurrentSnackBar();
+    msg.showSnackBar(SnackBar(content: Text(s.updateFailed(friendlyError(e)))));
   }
 }

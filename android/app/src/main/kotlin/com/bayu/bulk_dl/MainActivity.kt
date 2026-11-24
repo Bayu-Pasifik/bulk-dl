@@ -70,6 +70,16 @@ class MainActivity : FlutterActivity() {
                         pendingShare = null
                     }
                     "delete" -> result.success(delete(call.argument<String>("uri")!!))
+                    "abis" -> result.success(Build.SUPPORTED_ABIS.toList())
+                    "version" -> result.success(
+                        try { packageManager.getPackageInfo(packageName, 0).versionName } catch (e: Exception) { null }
+                    )
+                    "openUrl" -> result.success(
+                        try {
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(call.argument<String>("url")!!)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            true
+                        } catch (e: Exception) { false }
+                    )
                     else -> result.notImplemented()
                 }
             }

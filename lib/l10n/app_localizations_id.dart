@@ -442,4 +442,34 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get sitesCopied => 'Alamat disalin';
+
+  @override
+  String get updateCheck => 'Cek pembaruan';
+
+  @override
+  String updateVersion(String version) {
+    return 'Versi $version';
+  }
+
+  @override
+  String get updateChecking => 'Memeriksa...';
+
+  @override
+  String get updateUpToDate => 'Sudah versi terbaru';
+
+  @override
+  String updateAvailable(String version) {
+    return 'Pembaruan tersedia: $version';
+  }
+
+  @override
+  String get updateDownload => 'Unduh';
+
+  @override
+  String get updateLater => 'Nanti';
+
+  @override
+  String updateFailed(String error) {
+    return 'Gagal memeriksa pembaruan: $error';
+  }
 }

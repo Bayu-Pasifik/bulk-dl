@@ -146,5 +146,16 @@
   "vpnImport": "Paste from clipboard",
   "sitesTitle": "Supported sites",
   "sitesHint": "Tap a site to copy its address. Other pages with direct video links may also work.",
-  "sitesCopied": "Address copied"
+  "sitesCopied": "Address copied",
+  "updateCheck": "Check for updates",
+  "updateVersion": "Version {version}",
+  "@updateVersion": {"placeholders": {"version": {"type": "String"}}},
+  "updateChecking": "Checking...",
+  "updateUpToDate": "You are on the latest version",
+  "updateAvailable": "Update available: {version}",
+  "@updateAvailable": {"placeholders": {"version": {"type": "String"}}},
+  "updateDownload": "Download",
+  "updateLater": "Later",
+  "updateFailed": "Update check failed: {error}",
+  "@updateFailed": {"placeholders": {"error": {"type": "String"}}}
 }

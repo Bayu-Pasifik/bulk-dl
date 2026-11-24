@@ -441,4 +441,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sitesCopied => 'Address copied';
+
+  @override
+  String get updateCheck => 'Check for updates';
+
+  @override
+  String updateVersion(String version) {
+    return 'Version $version';
+  }
+
+  @override
+  String get updateChecking => 'Checking...';
+
+  @override
+  String get updateUpToDate => 'You are on the latest version';
+
+  @override
+  String updateAvailable(String version) {
+    return 'Update available: $version';
+  }
+
+  @override
+  String get updateDownload => 'Download';
+
+  @override
+  String get updateLater => 'Later';
+
+  @override
+  String updateFailed(String error) {
+    return 'Update check failed: $error';
+  }
 }

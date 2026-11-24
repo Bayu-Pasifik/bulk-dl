@@ -129,5 +129,16 @@
   "vpnImport": "Tempel dari clipboard",
   "sitesTitle": "Situs yang didukung",
   "sitesHint": "Ketuk situs untuk menyalin alamatnya. Halaman lain dengan tautan video langsung mungkin juga bisa.",
-  "sitesCopied": "Alamat disalin"
+  "sitesCopied": "Alamat disalin",
+  "updateCheck": "Cek pembaruan",
+  "updateVersion": "Versi {version}",
+  "@updateVersion": {"placeholders": {"version": {"type": "String"}}},
+  "updateChecking": "Memeriksa...",
+  "updateUpToDate": "Sudah versi terbaru",
+  "updateAvailable": "Pembaruan tersedia: {version}",
+  "@updateAvailable": {"placeholders": {"version": {"type": "String"}}},
+  "updateDownload": "Unduh",
+  "updateLater": "Nanti",
+  "updateFailed": "Gagal memeriksa pembaruan: {error}",
+  "@updateFailed": {"placeholders": {"error": {"type": "String"}}}
 }

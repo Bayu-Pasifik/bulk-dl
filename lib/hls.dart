@@ -175,7 +175,7 @@ Future<String> downloadHls(
   File out, {
   CancelToken? token,
   void Function(int done, int total, int bytes)? onProgress,
-  int parallel = 64,
+  int parallel = 16,
 }) async {
   final text =
       (await dio.get<String>(
@@ -189,7 +189,7 @@ Future<String> downloadHls(
 
   Future<Uint8List> fetch(String url) async {
     Object? last;
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < 6; i++) {
       try {
         final r = await dio.get<List<int>>(
           url,
@@ -200,7 +200,10 @@ Future<String> downloadHls(
       } on DioException catch (e) {
         if (CancelToken.isCancel(e)) rethrow;
         last = e;
-        await Future<void>.delayed(Duration(milliseconds: 400 * (i + 1)));
+        final busy = e.response?.statusCode == 429;
+        await Future<void>.delayed(
+          Duration(milliseconds: (busy ? 2000 : 400) * (i + 1)),
+        );
       }
     }
     throw last!;

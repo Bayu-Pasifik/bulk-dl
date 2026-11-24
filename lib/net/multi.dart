@@ -4,8 +4,9 @@ import 'dart:math' as math;
 
 import 'package:dio/dio.dart';
 
-/// Max simultaneous connections used for one download.
-const kMaxConnections = 64;
+/// Max simultaneous connections for one download. Starts here, halves on
+/// HTTP 429/503 (rate limit) so hosts that throttle do not fail the download.
+const kMaxConnections = 16;
 
 /// The server did not honour HTTP Range; caller falls back to one stream.
 class RangeUnsupported implements Exception {
@@ -31,6 +32,7 @@ Future<void> downloadRanged(
   var next = 0;
   var received = 0;
   Object? failure;
+  var limit = connections; // workers with id >= limit retire
 
   final raf = await out.open(mode: FileMode.write);
   try {
@@ -57,7 +59,7 @@ Future<void> downloadRanged(
             options: Options(
               responseType: ResponseType.stream,
               headers: {'Range': 'bytes=$pos-$end'},
-              validateStatus: (s) => s != null && s < 400,
+              validateStatus: (s) => s != null && s < 400 && s != 429 && s != 503,
             ),
           );
           if (r.statusCode != 206) {
@@ -75,7 +77,15 @@ Future<void> downloadRanged(
         } on RangeUnsupported {
           rethrow;
         } on DioException catch (e) {
-          if (CancelToken.isCancel(e) || attempt >= 3) rethrow;
+          if (CancelToken.isCancel(e)) rethrow;
+          final code = e.response?.statusCode;
+          if (code == 429 || code == 503) {
+            limit = math.max(1, limit ~/ 2); // back off: fewer connections
+            if (attempt >= 8) rethrow;
+            await Future<void>.delayed(Duration(seconds: 1 + attempt));
+            continue;
+          }
+          if (attempt >= 3) rethrow;
         } on Object {
           if (attempt >= 3) rethrow;
         }
@@ -83,8 +93,8 @@ Future<void> downloadRanged(
       }
     }
 
-    Future<void> worker() async {
-      while (failure == null && next < starts.length) {
+    Future<void> worker(int id) async {
+      while (failure == null && next < starts.length && id < limit) {
         final s = starts[next++];
         try {
           await fetch(s);
@@ -95,7 +105,7 @@ Future<void> downloadRanged(
     }
 
     await Future.wait([
-      for (var i = 0; i < math.min(connections, starts.length); i++) worker(),
+      for (var i = 0; i < math.min(connections, starts.length); i++) worker(i),
     ]);
     await tail;
     if (failure != null) throw failure!;
